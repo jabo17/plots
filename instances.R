@@ -10,10 +10,16 @@ if (TEX) {
     mtmetis_name <- "MtMetis"
 }
 
-kaminpar_fm <- load_data(kaminpar_fm_name, "/data/KaMinPar-FM.csv") %>%
+kaminpar_fm <- load_dataset(
+    filename = "KaMinPar-FM", 
+    name = kaminpar_fm_name
+) %>%
     dplyr::filter(K %in% c(8, 37, 64, 91, 128))
 
-mtmetis <- load_data(mtmetis_name, "/data/MtMetis.csv") %>%
+mtmetis <- load_dataset(
+    filename = "MtMetis", 
+    name = mtmetis_name
+) %>%
     dplyr::filter(K %in% c(8, 37, 64, 91, 128))
 
 # This step is optional: for the final thesis / paper, it is generally a good idea to 

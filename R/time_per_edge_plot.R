@@ -68,11 +68,12 @@ create_time_per_edge_plot <- function(
             ) %>%
             dplyr::arrange(M) %>%
             dplyr::mutate(
-                TimePerEdgeUS = Time / M * 1000 * 1000,
+                UndirectedM = M / 2,
+                TimePerEdgeUS = Time / (M / 2) * 1000 * 1000,
                 RollingTimePerEdgeUS = zoo::rollapply(
                     TimePerEdgeUS,
                     window_size,
-                    function(x) Gmean(x, na.rm = TRUE),
+                    \(x) Gmean(x, na.rm = TRUE),
                     partial = TRUE,
                     align = "right"
                 ),
@@ -86,8 +87,24 @@ create_time_per_edge_plot <- function(
     }
 
     plot <- ggplot2::ggplot(data) +
-        ggplot2::geom_point(ggplot2::aes(x = M, y = TimePerEdgeUS, color = Algorithm), size = 0.2, alpha = 1 / 3, na.rm = TRUE) +
-        ggplot2::geom_line(ggplot2::aes(x = M, y = RollingTimePerEdgeUS, color = Algorithm), linewidth = 1.5)
+        ggplot2::geom_point(
+            ggplot2::aes(
+                x = UndirectedM, 
+                y = TimePerEdgeUS, 
+                color = Algorithm
+            ), 
+            size = 0.2, 
+            alpha = 1 / 3, 
+            na.rm = TRUE
+        ) +
+        ggplot2::geom_line(
+            ggplot2::aes(
+                x = UndirectedM, 
+                y = RollingTimePerEdgeUS, 
+                color = Algorithm
+            ), 
+            linewidth = 1.5
+        )
 
     if (length(colors) > 0) {
         plot <- plot + ggplot2::scale_color_manual(name = "Algorithm", values = colors)

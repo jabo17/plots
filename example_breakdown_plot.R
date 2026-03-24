@@ -13,9 +13,9 @@ aggreate_running_times <- \(df) {
     )
 }
 
-kaminpar <- load_data(
+kaminpar <- load_dataset(
     name = "KaMinPar",
-    file = "data/KaMinPar-Timings.csv",
+    filename = "KaMinPar-Timings",
     aggregator = aggreate_running_times
 )
 

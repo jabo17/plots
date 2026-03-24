@@ -16,7 +16,7 @@ example_performance_plot <- create_performance_profile_plot(
         tex = TRUE
     ) +
     ggplot2::theme_bw() +
-    create_theme() +
+    default_theme +
     ggplot2::xlab("Ratio") +
     ggplot2::ylab("Fraction of Instances") +
     ggplot2::theme(legend.position = "bottom")
@@ -29,7 +29,7 @@ example_running_time_box_plot <- create_running_time_box_plot(
         annotate = "none"
     ) +
     ggplot2::theme_bw() +
-    create_theme() +
+    default_theme +
     ggplot2::ylab("Running Time (s)") +
     ggplot2::theme(legend.position = "none")
 

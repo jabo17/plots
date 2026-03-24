@@ -1,4 +1,4 @@
-Graph,K,Seed,Cut,Epsilon,Imbalance,Time,MaxRSS,Threads,Failed
+Graph,K,Seed,Cut,Epsilon,Imbalance,Time,MaxRSS,Cores,Failed
 "af_shell10",1000,1,1764765,0.03,0.042,0.654,1275504,96,0
 "af_shell10",128,1,623707,0.03,0.031,0.388,1146828,96,0
 "af_shell10",30000,1,9353917,0.03,3.595,10.06,3802824,96,0

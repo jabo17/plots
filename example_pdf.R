@@ -4,7 +4,6 @@ TEX <- FALSE
 source("R/common.R")
 source("R/performance_profile_plot.R")
 source("R/running_time_box_plot.R")
-source("R/slowdown_plot.R")
 source("R/speedup_plot.R")
 
 source("instances.R")
@@ -18,25 +17,7 @@ example_performance_plot <- create_performance_profile_plot(
     ) +
     ggplot2::labs(title = "Performance Profile") +
     ggplot2::theme_bw() +
-    create_theme() +
-    ggplot2::xlab("Ratio") +
-    ggplot2::ylab("Fraction of Instances") +
-    ggplot2::theme(legend.position = "bottom")
-
-example_performance_plot_noimb <- create_performance_profile_plot(
-        kaminpar_fm,
-        mtmetis,
-        # ... add more datasets here ...
-        # Remove the next line if you do not want to use custom colors
-        colors = colors,
-        # Use these arguments to treat imbalanced (and thus infeasible) 
-        # partitions like balanced ones:
-        column.objective = "AvgRealCut", # AvgCut is set to Inf for infeasible solutions
-        column.imbalanced = NA
-    ) +
-    ggplot2::labs(title = "Performance Profile (ignore imbalances)") +
-    ggplot2::theme_bw() +
-    create_theme() +
+    default_theme +
     ggplot2::xlab("Ratio") +
     ggplot2::ylab("Fraction of Instances") +
     ggplot2::theme(legend.position = "bottom")
@@ -51,39 +32,40 @@ example_running_time_box_plot <- create_running_time_box_plot(
         subtitle = "With geometric mean running time per algorithm"
     ) +
     ggplot2::theme_bw() +
-    create_theme() +
+    default_theme +
     ggplot2::ylab("Running Time (s)") +
     ggplot2::theme(legend.position = "bottom")
 
-example_slowdown_plot <- create_slowdown_plot(
-        mtmetis,
+example_slowdown_plot <- create_speedup_plot(
+        kaminpar_fm, mtmetis,
         baseline = kaminpar_fm,
-        colors = colors
+        colors = colors,
+        mode = "slowdown"
     ) +
     ggplot2::labs(
         title = "Running Time Relative to Baseline",
         subtitle = "< 1 is faster"
     ) +
     ggplot2::theme_bw() +
-    create_theme() +
+    default_theme +
     ggplot2::theme(legend.position = "bottom")
 
 example_speedup_plot <- create_speedup_plot(
-        mtmetis,
+        kaminpar_fm, mtmetis,
         baseline = kaminpar_fm,
-        colors = colors
+        colors = colors,
+        mode = "speedup"
     ) +
     ggplot2::labs(
         title = "Running Time Relative to Baseline",
         subtitle = "> 1 is faster"
     ) +
     ggplot2::theme_bw() +
-    create_theme() +
+    default_theme +
     ggplot2::theme(legend.position = "bottom")
 
 open_pdf("examples")
 print(example_performance_plot)
-print(example_performance_plot_noimb)
 print(example_running_time_box_plot)
 print(example_slowdown_plot)
 print(example_speedup_plot)

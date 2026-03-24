@@ -1,48 +1,47 @@
 #!/usr/bin/env Rscript
 show_timeout <- \(df, option) option == "always" || (option == "auto" && any(df$Timeout))
-show_imbalanced <- \(df, option) option == "always" || (option == "auto" && any(df$Imbalanced)) 
+show_imbalanced <- \(df, option) option == "always" || (option == "auto" && any(df$Imbalanced))
 show_failed <- \(df, option) option == "always" || (option == "auto" && any(df$Failed))
 
-create_running_time_box_plot <- function(
+create_running_time_box_plot <- \(
     ...,
-    column.time = "AvgTime", 
-    column.algorithm = "Algorithm", 
+    column.time = "AvgTime",
+    column.algorithm = "Algorithm",
     column.timeout = "Timeout",
     column.imbalanced = "Imbalanced",
     column.failed = "Failed",
     primary_key = c("Graph", "K"),
     exclude.imbalanced = FALSE,
-    tick.timeout = "auto", # always, auto, never
-    tick.imbalanced = "auto", # always, auto, never
-    tick.failed = "auto", # always, auto, never
+    tick.timeout = "auto",
+    tick.imbalanced = "auto",
+    tick.failed = "auto",
     tick.errors.space_below = 0.8,
     tick.errors.space_between = 0.8,
-    tex = FALSE,
-    pdf.label.timeout = PDF_LABEL_TIMEOUT,
-    pdf.label.imbalanced = PDF_LABEL_IMBALANCED,
-    pdf.label.failed = PDF_LABEL_FAILED,
-    tex.label.timeout = TEX_LABEL_TIMEOUT,
-    tex.label.imbalanced = TEX_LABEL_IMBALANCED,
-    tex.label.failed = TEX_LABEL_FAILED,
+    label.timeout = TEX_LABEL_TIMEOUT,
+    label.imbalanced = TEX_LABEL_IMBALANCED,
+    label.failed = TEX_LABEL_FAILED,
     colors = c(),
     levels = c(),
+    annotate = "minimal", # none, minimal, extensive
+    annotate.position = 2,
     position.y = "left",
-    annotate = "extensive" # extensive, minimal, none
+    plot.xlab = "Algorithm",
+    plot.ylab = "Time [s]"
 ) {
     all_dfs <- list(...)
-    if (length(all_dfs) == 0) {
-        cli::cli_abort("Need at least one data frame for plotting running times.")
+
+    if (length(all_dfs) < 1) {
+        cli::cli_abort("Need at least one data frames for plotting a running time box plot.")
     }
 
-    for (i in 1:length(all_dfs)) {
+    # Run some basic sanity checks against the data frames
+    for (i in 1 : length(all_dfs)) {
         # Sort the data; replace 0 by 1 to ensure that zero-cuts do not crash our code
         df <- all_dfs[[i]] %>% dplyr::arrange_at(primary_key) 
         all_dfs[[i]] <- df
 
-        # Sanity checks: crash early with helpful error messages
         if (!(column.algorithm %in% colnames(df))) {
             cli::cli_abort("Column {.field {column.algorithm}} missing from data frame no. {.val {i}}.")
-            quit()
         }
 
         algorithms <- df %>% dplyr::pull(rlang::sym(column.algorithm))
@@ -64,35 +63,34 @@ create_running_time_box_plot <- function(
             cli::cli_abort("Column {.field {column.failed}} missing from data frame no. {.val {i}} (algorithm {.val {algorithm}}).")
         }
 
-        for (illegal_value in list(NaN, NA, -Inf, 0)) {
-            if (illegal_value %in% df[[column.time]]) {
-                cli::cli_abort("Column {.field {column.time}} of data frame no. {.val {i}} (algorithm {.val {algorithm}}) contains illegal value {.val {illegal_value}}.")
-                quit()
-            }
+        if (0 %in% df[[column.time]]) {
+            cli::cli_abort("Column {.field {column.time}} of data frame no. {.val {i}} (algorithm {.val {algorithm}}) contains {.val 0} values.")
+        }
+        if (-Inf %in% df[[column.time]]) {
+            cli::cli_abort("Column {.field {column.time}} of data frame no. {.val {i}} (algorithm {.val {algorithm}}) contains {.val -Inf} values.")
         }
 
         if (nrow(df[, primary_key]) != nrow(all_dfs[[1]][, primary_key])) {
             cli::cli_abort("Number of rows for the primary keys in data frame no. {.val {i}} (algorithm {.val {algorithm}}) does not match the number of rows for the primary keys in the first data frame.")
-            quit()
         }
         if (!all.equal(df[, primary_key], all_dfs[[1]][, primary_key])) {
             cli::cli_abort("Primary keys of data frame no. {.val {i}} (algorithm {.val {algorithm}}) does not match for all rows with the primary keys of the first data frame.")
-            quit()
         }
     }
 
-    data <- purrr::map_dfr(all_dfs, \(df) df %>% 
+    data <- purrr::map_dfr(all_dfs, \(df) df %>%
         dplyr::select(
             Algorithm = rlang::sym(column.algorithm),
             Time = rlang::sym(column.time),
             Timeout = rlang::sym(column.timeout),
             Imbalanced = rlang::sym(column.imbalanced),
             Failed = rlang::sym(column.failed)
-        ) %>% 
+        ) %>%
         dplyr::mutate(
             PK = dplyr::row_number(),
-            Imbalanced = exclude.imbalanced & Imbalanced,
-            JitterTime = Time
+            Imbalanced = Imbalanced & exclude.imbalanced,
+            JitterTime = Time,
+            AnnotationTime = Time
         )
     )
 
@@ -101,72 +99,66 @@ create_running_time_box_plot <- function(
     }
 
     # Find max time
-    min_max_time <- data %>% 
+    min_max_time <- data %>%
         dplyr::filter(!Timeout & !Imbalanced & !Failed) %>%
         dplyr::summarize(Max = max(Time), Min = min(Time))
     max_time_log10 <- ceiling(log10(min_max_time$Max))
-    min_time_log10 <- -1
+    min_time_log10 <- ceiling(log10(min_max_time$Min))
     max_time_exp10 <- 10 ^ max_time_log10
     min_time_exp10 <- 10 ^ min_time_log10
 
-    # Create ticks 
+    # Create ticks
     y_breaks <- 10 ^ seq(min_time_log10, max_time_log10, by = 1)
-    if (tex) {
-        y_labels <- sapply(y_breaks, \(val) paste0("$10^{", log10(val), "}$"))
-    } else {
-        y_labels <- sapply(y_breaks, \(val) paste0("1e", log10(val)))
-    }
-
-    # Remap imbalanced solutions, timeouts and failed runs
-    label.imbalanced <- ifelse(tex, tex.label.imbalanced, pdf.label.imbalanced)
-    label.timeout <- ifelse(tex, tex.label.timeout, pdf.label.timeout)
-    label.failed <- ifelse(tex, tex.label.failed, pdf.label.failed)
+    y_labels <- sapply(y_breaks, \(val) paste0("$10^{", log10(val), "}$"))
 
     show_imbalanced_tick <- show_imbalanced(data, tick.imbalanced)
     show_timeout_tick <- show_timeout(data, tick.timeout)
     show_failed_tick <- show_failed(data, tick.failed)
-    show_error_ticks <- show_imbalanced_tick || show_timeout_tick || show_failed_tick 
+    show_error_ticks <- show_imbalanced_tick || show_timeout_tick || show_failed_tick
 
     offset <- tick.errors.space_below - tick.errors.space_below
-    if (show_imbalanced(data, tick.imbalanced)) {
+    if (show_imbalanced_tick) {
         offset <- offset + tick.errors.space_between
         y_breaks <- c(y_breaks, 10 ^ (max_time_log10 + offset))
         y_labels <- c(y_labels, label.imbalanced)
     }
 
+    # Mark imbalanced cuts as imbalanced
     data <- data %>% dplyr::mutate(
-        JitterTime = ifelse(Imbalanced & !Timeout, 10 ^ (max_time_log10 + offset), JitterTime),
-        Time = ifelse(Imbalanced & !Timeout, NA, Time)
+        JitterTime = ifelse(exclude.imbalanced & Imbalanced & !Timeout, 10 ^ (max_time_log10 + offset), JitterTime),
+        Time = ifelse(exclude.imbalanced & Imbalanced & !Timeout, NA, Time)
     )
 
-    if (show_timeout(data, tick.timeout)) {
+    if (show_timeout_tick) {
         offset <- offset + tick.errors.space_between
         y_breaks <- c(y_breaks, 10 ^ (max_time_log10 + offset))
         y_labels <- c(y_labels, label.timeout)
     }
 
+    # Mark timeout cuts as timeouts
     data <- data %>% dplyr::mutate(
         JitterTime = ifelse(Timeout, 10 ^ (max_time_log10 + offset), JitterTime)
     )
 
-    if (show_failed(data, tick.failed)) {
+    if (show_failed_tick) {
         offset <- offset + tick.errors.space_between
         y_breaks <- c(y_breaks, 10 ^ (max_time_log10 + offset))
         y_labels <- c(y_labels, label.failed)
     }
 
+    # Mark failed cuts as failed
     data <- data %>% dplyr::mutate(
         JitterTime = ifelse(Failed & !Timeout & !Imbalanced, 10 ^ (max_time_log10 + offset), JitterTime),
         Time = ifelse(Failed & !Timeout & !Imbalanced, NA, Time)
     )
 
-    # Compute stats across instances for which all Algorithms produced a meaningful result
     data <- data %>%
         dplyr::group_by(PK) %>%
         dplyr::mutate(.AllOk = all(!is.na(Time))) %>%
         dplyr::ungroup() %>%
         dplyr::mutate(ComparableTime = ifelse(.AllOk, Time, NA)) %>%
         dplyr::select(-.AllOk)
+
     annotation <- data %>%
         dplyr::group_by(Algorithm) %>%
         dplyr::summarize(
@@ -180,22 +172,21 @@ create_running_time_box_plot <- function(
 
     p <- ggplot2::ggplot(data, ggplot2::aes(x = Algorithm, y = JitterTime)) +
         ggplot2::geom_jitter(
-            ggplot2::aes(color = Algorithm, fill = Algorithm), 
-            size = 0.75, 
-            alpha = 0.33, 
-            pch = 21, 
+            ggplot2::aes(color = Algorithm, fill = Algorithm),
+            size = 0.75,
+            alpha = 0.33,
+            pch = 21,
             width = 0.3
         ) +
         ggplot2::stat_boxplot(
             ggplot2::aes(y = ComparableTime, color = Algorithm), 
-            geom = "errorbar", 
-            width = 0.6, 
+            geom = "errorbar", width = 0.6,
             na.rm = TRUE
         ) +
         ggplot2::geom_boxplot(
             ggplot2::aes(y = ComparableTime, color = Algorithm), 
             outlier.shape = NA, 
-            alpha = 0.5, 
+            alpha = 0.5,
             na.rm = TRUE
         ) +
         ggplot2::scale_y_continuous(
@@ -209,15 +200,15 @@ create_running_time_box_plot <- function(
         p <- p + ggplot2::geom_text(
             ggplot2::aes(
                 x = Algorithm, 
-                y = min(data$JitterTime),
+                y = min(data$JitterTime) / 2,
                 label = sprintf(
-                    "Cmp: %.2fs (%d), All: %.2fs (%d)",
+                    "Cmp: %.1f s (%d), All: %.1f s (%d)",
                     GmeanCommon, 
                     NumCommon,
                     GmeanFeasibles,
                     NumFeasibles
                 ),
-                vjust = 1.5
+                vjust = 0.5
             ), 
             annotation, 
             size = 2.5
@@ -226,15 +217,14 @@ create_running_time_box_plot <- function(
         p <- p + ggplot2::geom_text(
             ggplot2::aes(
                 x = Algorithm, 
-                y = min(data$JitterTime),
-                label = sprintf("%.2fs", GmeanCommon),
-                vjust = 1.5
+                y = min(data$JitterTime) / annotate.position,
+                label = sprintf("%.1f s", GmeanCommon),
+                vjust = 0.5
             ), 
             annotation, 
             size = 2.5
         )
     }
-
 
     if (show_error_ticks) {
         p <- p + ggplot2::geom_hline(yintercept = 10 ^ (max_time_log10 + tick.errors.space_below / 2))
@@ -242,11 +232,17 @@ create_running_time_box_plot <- function(
 
     # Set colors
     if (length(colors) > 0) {
-        p <- p + 
+        p <- p +
             ggplot2::scale_color_manual(name = "Algorithm", values = colors) +
             ggplot2::scale_fill_manual(name = "Algorithm", values = colors)
     }
 
+    if (!is.na(plot.xlab)) {
+        p <- p + ggplot2::xlab(plot.xlab)
+    }
+    if (!is.na(plot.ylab)) {
+        p <- p + ggplot2::ylab(plot.ylab)
+    }
+
     p
 }
-
