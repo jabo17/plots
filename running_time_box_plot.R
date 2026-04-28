@@ -202,7 +202,7 @@ create_running_time_box_plot <- \(
                 x = Algorithm, 
                 y = min(data$JitterTime) / 2,
                 label = sprintf(
-                    "Cmp: %.1f s (%d), All: %.1f s (%d)",
+                    "Cmp: %.2f s (%d), All: %.2f s (%d)",
                     GmeanCommon, 
                     NumCommon,
                     GmeanFeasibles,
@@ -218,7 +218,7 @@ create_running_time_box_plot <- \(
             ggplot2::aes(
                 x = Algorithm, 
                 y = min(data$JitterTime) / annotate.position,
-                label = sprintf("%.1f s", GmeanCommon),
+                label = sprintf("%.2f s", GmeanCommon),
                 vjust = 0.5
             ), 
             annotation, 
