@@ -27,7 +27,8 @@ create_relative_by_graph_grid_plot <- \(
     colors = c(),
     levels = c(),
     plot.xlab = "Cores",
-    plot.ylab = NULL
+    plot.ylab = NULL,
+    y.breaks = c(0, 0.5, 1.0, 1.5, 2.0)
 ) {
     metric <- match.arg(metric)
     column.value <- if (metric == "cut") column.cut else column.time
@@ -96,6 +97,11 @@ create_relative_by_graph_grid_plot <- \(
     num_graphs <- length(unique(data$Graph))
     num_cols <- ceiling(sqrt(num_graphs))
     baseline_color <- if (baseline_name %in% names(colors)) colors[[baseline_name]] else "black"
+    y_max <- max(1, data$Ratio, na.rm = TRUE)
+    y_breaks <- y.breaks[y.breaks <= y_max * 1.05]
+    if (!1.0 %in% y_breaks) {
+        y_breaks <- sort(c(y_breaks, 1.0))
+    }
 
     p <- ggplot2::ggplot(data, ggplot2::aes(x = CoreLabel, y = Ratio, fill = Algorithm)) +
         ggplot2::geom_col(
@@ -104,6 +110,7 @@ create_relative_by_graph_grid_plot <- \(
         ) +
         ggplot2::geom_hline(yintercept = 1.0, linewidth = 0.3, color = baseline_color) +
         ggplot2::facet_wrap(~ Graph, ncol = num_cols) +
+        ggplot2::scale_y_continuous(breaks = y_breaks) +
         ggplot2::ylab(plot.ylab) +
         ggplot2::xlab(plot.xlab)
 
