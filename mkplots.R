@@ -8,7 +8,8 @@
 #
 # Usage:
 #   Rscript /work/mkplots.R [--performance-profile] [--speedup] [--running-time]
-#                           [--output <path>] <algo1> [<algo2> ...]
+#                           [--threads T|NxMxT] [--output <path>]
+#                           <algo1> [<algo2> ...]
 #
 # When no plot flags are given all three plots are generated (same as specifying
 # all three flags).
@@ -26,6 +27,29 @@ do_running_time        <- FALSE
 explicit_plots         <- FALSE
 algorithms             <- character(0)
 output_file            <- "/output/plots.pdf"
+thread_filter          <- NULL
+
+parse_thread_filter <- function(value) {
+  parts <- strsplit(value, "x", fixed = TRUE)[[1]]
+  if (length(parts) == 1L) {
+    parts <- c("1", "1", parts[[1]])
+  }
+  if (length(parts) != 3L || any(!grepl("^[0-9]+$", parts))) {
+    cli::cli_abort("--threads must be T or NxMxT with positive integers, got {.val {value}}")
+  }
+
+  parsed <- as.integer(parts)
+  if (any(is.na(parsed)) || any(parsed <= 0L)) {
+    cli::cli_abort("--threads must be T or NxMxT with positive integers, got {.val {value}}")
+  }
+
+  list(
+    nodes = parsed[[1]],
+    mpis = parsed[[2]],
+    threads = parsed[[3]],
+    label = paste(parsed, collapse = "x")
+  )
+}
 
 i <- 1L
 while (i <= length(args)) {
@@ -38,9 +62,20 @@ while (i <= length(args)) {
     do_running_time        <- TRUE; explicit_plots <- TRUE
   } else if (arg == "--output") {
     i <- i + 1L
+    if (i > length(args)) {
+      cli::cli_abort("Missing value for --output")
+    }
     output_file <- args[[i]]
   } else if (startsWith(arg, "--output=")) {
     output_file <- substring(arg, 10L)
+  } else if (arg == "--threads") {
+    i <- i + 1L
+    if (i > length(args)) {
+      cli::cli_abort("Missing value for --threads")
+    }
+    thread_filter <- parse_thread_filter(args[[i]])
+  } else if (startsWith(arg, "--threads=")) {
+    thread_filter <- parse_thread_filter(substring(arg, 11L))
   } else if (!startsWith(arg, "--")) {
     algorithms <- c(algorithms, arg)
   } else {
@@ -64,6 +99,9 @@ if (length(algorithms) == 0L) {
 
 cli::cli_alert_info("Algorithms : {.val {algorithms}}")
 cli::cli_alert_info("Output     : {.path {output_file}}")
+if (!is.null(thread_filter)) {
+  cli::cli_alert_info("Threads    : {.val {thread_filter$label}}")
+}
 
 # ── Source plot library ────────────────────────────────────────────────────────
 # Working directory inside Docker is /work (the plots submodule).
@@ -93,7 +131,11 @@ cli::cli_h2("Loading datasets")
 dfs <- lapply(algorithms, function(algo) {
   cli::cli_alert_info("Loading {.val {algo}}")
   tryCatch(
-    load_dataset(algo, algo, cache = FALSE),
+    if (!is.null(thread_filter)) {
+      load_dataset(algo, algo, cache = FALSE, topology_filter = thread_filter)
+    } else {
+      load_dataset(algo, algo, cache = FALSE)
+    },
     error = function(e) {
       cli::cli_alert_danger("Failed to load {.val {algo}}: {e$message}")
       NULL

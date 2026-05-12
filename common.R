@@ -188,7 +188,8 @@ load_dataset <- \(
     default_timelimit = DEFAULT_TIMELIMIT,
     db = data.frame(),
     eps_offset = 0,
-    cache = TRUE) {
+    cache = TRUE,
+    topology_filter = NULL) {
     real_filename <- paste0(DATA_INPUT_DIR, "/", filename, ".csv")
     cache_filename <- paste0(CACHE_DIR, "/", gsub("/", "_", filename), ".cached.csv")
     df <- data.frame()
@@ -213,6 +214,24 @@ load_dataset <- \(
             } else {
                 df$Cores <- 1
             }
+        }
+        if (!is.null(topology_filter)) {
+            before_rows <- nrow(df)
+            if ("NumNodes" %in% colnames(df) &&
+                "NumMPIsPerNode" %in% colnames(df) &&
+                "NumThreadsPerMPI" %in% colnames(df)) {
+                df <- df %>% dplyr::filter(
+                    NumNodes == topology_filter$nodes,
+                    NumMPIsPerNode == topology_filter$mpis,
+                    NumThreadsPerMPI == topology_filter$threads
+                )
+            } else {
+                wanted_cores <- topology_filter$nodes * topology_filter$mpis * topology_filter$threads
+                df <- df %>% dplyr::filter(Cores == wanted_cores)
+            }
+            cli::cli_alert_info(
+                "Filtered {.val {name}} to {.val {topology_filter$label}}: {nrow(df)}/{before_rows} rows"
+            )
         }
         if (!("Failed" %in% colnames(df))) {
             df$Failed <- FALSE
