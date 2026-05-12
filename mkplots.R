@@ -72,6 +72,7 @@ source("common.R")
 source("performance_profile_plot.R")
 source("speedup_plot.R")
 source("running_time_box_plot.R")
+source("running_time_by_core_box_plot.R")
 
 # Use plain-text labels rather than LaTeX commands for PDF output.
 TEX_LABEL_TIMEOUT    <- "T"
@@ -211,6 +212,23 @@ if (do_running_time) {
     plots_written <- plots_written + 1L
   }, error = function(e) {
     cli::cli_alert_danger("Running time box plot failed: {e$message}")
+  })
+
+  cli::cli_h2("Running time per-core box plot")
+  tryCatch({
+    rtc <- do.call(
+      create_running_time_by_core_box_plot,
+      c(
+        unname(dfs_common),
+        list(
+          colors = colors
+        )
+      )
+    )
+    print(rtc + default_theme)
+    plots_written <- plots_written + 1L
+  }, error = function(e) {
+    cli::cli_alert_danger("Running time per-core box plot failed: {e$message}")
   })
 }
 
