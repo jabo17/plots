@@ -73,6 +73,7 @@ source("performance_profile_plot.R")
 source("speedup_plot.R")
 source("running_time_box_plot.R")
 source("running_time_by_core_box_plot.R")
+source("relative_by_graph_grid_plot.R")
 
 # Use plain-text labels rather than LaTeX commands for PDF output.
 TEX_LABEL_TIMEOUT    <- "T"
@@ -229,6 +230,46 @@ if (do_running_time) {
     plots_written <- plots_written + 1L
   }, error = function(e) {
     cli::cli_alert_danger("Running time per-core box plot failed: {e$message}")
+  })
+
+  cli::cli_h2("Relative cut graph grid")
+  tryCatch({
+    rcg <- do.call(
+      create_relative_by_graph_grid_plot,
+      c(
+        unname(dfs_common[-1]),
+        list(
+          baseline = dfs_common[[1]],
+          metric = "cut",
+          colors = colors,
+          levels = algorithms
+        )
+      )
+    )
+    print(rcg + default_theme + relative_by_graph_grid_theme())
+    plots_written <- plots_written + 1L
+  }, error = function(e) {
+    cli::cli_alert_danger("Relative cut graph grid failed: {e$message}")
+  })
+
+  cli::cli_h2("Relative running time graph grid")
+  tryCatch({
+    rtg <- do.call(
+      create_relative_by_graph_grid_plot,
+      c(
+        unname(dfs_common[-1]),
+        list(
+          baseline = dfs_common[[1]],
+          metric = "time",
+          colors = colors,
+          levels = algorithms
+        )
+      )
+    )
+    print(rtg + default_theme + relative_by_graph_grid_theme())
+    plots_written <- plots_written + 1L
+  }, error = function(e) {
+    cli::cli_alert_danger("Relative running time graph grid failed: {e$message}")
   })
 }
 
