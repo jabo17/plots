@@ -12,6 +12,8 @@ create_running_time_by_core_box_plot <- \(
     exclude.imbalanced = FALSE,
     colors = c(),
     levels = c(),
+    annotate = "minimal", # none, minimal
+    annotate.position = 2,
     plot.xlab = "Cores",
     plot.ylab = "Time [s]"
 ) {
@@ -97,13 +99,21 @@ create_running_time_by_core_box_plot <- \(
     y_breaks <- 10 ^ seq(min_time_log10, max_time_log10, by = 1)
     y_labels <- sapply(y_breaks, \(val) paste0("$10^{", log10(val), "}$"))
 
+    annotation <- data %>%
+        dplyr::group_by(CoreLabel, Algorithm) %>%
+        dplyr::summarize(
+            Gmean = exp(mean(log(Time), na.rm = TRUE)),
+            .groups = "drop"
+        )
+
     dodge <- ggplot2::position_dodge(width = 0.8)
 
     p <- ggplot2::ggplot(
         data,
-        ggplot2::aes(x = CoreLabel, y = Time, color = Algorithm, fill = Algorithm)
+        ggplot2::aes(x = CoreLabel, y = Time, color = Algorithm)
     ) +
         ggplot2::geom_jitter(
+            ggplot2::aes(fill = Algorithm),
             position = ggplot2::position_jitterdodge(jitter.width = 0.15, dodge.width = 0.8),
             size = 0.65,
             alpha = 0.25,
@@ -126,6 +136,22 @@ create_running_time_by_core_box_plot <- \(
             breaks = y_breaks,
             labels = y_labels
         )
+
+    if (annotate == "minimal") {
+        p <- p + ggplot2::geom_text(
+            data = annotation,
+            ggplot2::aes(
+                x = CoreLabel,
+                y = min(data$Time, na.rm = TRUE) / annotate.position,
+                label = sprintf("%.2f s", Gmean),
+                group = Algorithm,
+                vjust = 0.5
+            ),
+            position = dodge,
+            size = 2.5,
+            inherit.aes = FALSE
+        )
+    }
 
     if (length(colors) > 0) {
         p <- p +
