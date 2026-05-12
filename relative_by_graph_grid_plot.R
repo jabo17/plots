@@ -2,10 +2,15 @@
 
 relative_by_graph_grid_theme <- \() {
     ggplot2::theme(
-        aspect.ratio = 1,
+        aspect.ratio = NULL,
         axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5, size = 6),
         strip.text = ggplot2::element_text(size = 6),
-        panel.spacing = ggplot2::unit(0.25, "lines")
+        panel.spacing = ggplot2::unit(0.2, "lines"),
+        legend.position = "bottom",
+        legend.direction = "horizontal",
+        legend.box = "horizontal",
+        legend.margin = ggplot2::margin(0, 0, 0, 0),
+        plot.margin = ggplot2::margin(4, 4, 4, 4)
     )
 }
 
