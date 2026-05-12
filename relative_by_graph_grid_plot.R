@@ -3,7 +3,7 @@
 relative_by_graph_grid_theme <- \() {
     ggplot2::theme(
         aspect.ratio = 1,
-        axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5, size = 5),
+        axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5, size = 6),
         strip.text = ggplot2::element_text(size = 6),
         panel.spacing = ggplot2::unit(0.25, "lines")
     )
@@ -21,7 +21,7 @@ create_relative_by_graph_grid_plot <- \(
     column.time = "AvgTime",
     colors = c(),
     levels = c(),
-    plot.xlab = "Algorithm / Cores",
+    plot.xlab = "Cores",
     plot.ylab = NULL
 ) {
     metric <- match.arg(metric)
@@ -81,8 +81,7 @@ create_relative_by_graph_grid_plot <- \(
         dplyr::group_by(Graph, Algorithm, Cores) %>%
         dplyr::summarize(Ratio = Gmean(Ratio), .groups = "drop") %>%
         dplyr::mutate(
-            CoreLabel = factor(Cores, levels = sort(unique(Cores))),
-            Bar = interaction(Algorithm, CoreLabel, sep = " / ", lex.order = TRUE)
+            CoreLabel = factor(Cores, levels = sort(unique(Cores)))
         )
 
     if (nrow(data) == 0) {
@@ -93,10 +92,13 @@ create_relative_by_graph_grid_plot <- \(
     num_cols <- ceiling(sqrt(num_graphs))
     baseline_color <- if (baseline_name %in% names(colors)) colors[[baseline_name]] else "black"
 
-    p <- ggplot2::ggplot(data, ggplot2::aes(x = Bar, y = Ratio, fill = Algorithm)) +
-        ggplot2::geom_col(width = 0.75) +
+    p <- ggplot2::ggplot(data, ggplot2::aes(x = CoreLabel, y = Ratio, fill = Algorithm)) +
+        ggplot2::geom_col(
+            position = ggplot2::position_dodge(width = 0.8),
+            width = 0.7
+        ) +
         ggplot2::geom_hline(yintercept = 1.0, linewidth = 0.3, color = baseline_color) +
-        ggplot2::facet_wrap(~ Graph, ncol = num_cols, scales = "free_x") +
+        ggplot2::facet_wrap(~ Graph, ncol = num_cols) +
         ggplot2::ylab(plot.ylab) +
         ggplot2::xlab(plot.xlab)
 
