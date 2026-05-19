@@ -132,3 +132,81 @@ create_speedup_plot <- \(
 
     return (plot)
 }
+
+create_core_speedup_plot <- \(
+    df,
+    primary_key = c("Graph", "K", "Epsilon"),
+    column.time = "AvgTime",
+    column.cores = "Cores",
+    column.algorithm = "Algorithm",
+    colors = c()
+) {
+    required <- c(primary_key, column.time, column.cores, column.algorithm)
+    missing <- setdiff(required, colnames(df))
+    if (length(missing) > 0) {
+        cli::cli_abort("Columns missing for core speedup plot: {.field {missing}}")
+    }
+
+    algorithm <- dplyr::first(df[[column.algorithm]])
+    data <- df %>%
+        dplyr::select(
+            dplyr::all_of(primary_key),
+            Time = rlang::sym(column.time),
+            Cores = rlang::sym(column.cores)
+        ) %>%
+        dplyr::filter(is.finite(Time), Time > 0, is.finite(Cores), Cores > 0)
+
+    if (nrow(data) == 0) {
+        cli::cli_abort("No positive finite running times remain for {.val {algorithm}}.")
+    }
+
+    baseline_cores <- min(data$Cores, na.rm = TRUE)
+    baseline <- data %>%
+        dplyr::filter(Cores == baseline_cores) %>%
+        dplyr::rename(BaselineTime = Time) %>%
+        dplyr::select(dplyr::all_of(primary_key), BaselineTime)
+
+    candidates <- data %>% dplyr::filter(Cores > baseline_cores)
+    if (nrow(candidates) == 0) {
+        cli::cli_abort("Need at least one core count larger than baseline {.val {baseline_cores}} for {.val {algorithm}}.")
+    }
+
+    joined <- candidates %>%
+        dplyr::inner_join(baseline, by = primary_key) %>%
+        dplyr::mutate(Speedup = BaselineTime / Time) %>%
+        dplyr::filter(is.finite(Speedup), Speedup > 0, is.finite(BaselineTime), BaselineTime > 0) %>%
+        dplyr::arrange(Cores, BaselineTime)
+
+    if (nrow(joined) == 0) {
+        cli::cli_abort("No comparable rows remain for core speedup plot.")
+    }
+
+    curve <- joined %>%
+        dplyr::group_by(Cores) %>%
+        dplyr::arrange(BaselineTime, .by_group = TRUE) %>%
+        dplyr::mutate(
+            Count = dplyr::row_number(),
+            GMeanSpeedup = exp(cumsum(log(Speedup)) / Count),
+            CoreLabel = paste0(Cores, " cores")
+        ) %>%
+        dplyr::ungroup()
+
+    core_levels <- curve %>%
+        dplyr::distinct(Cores, CoreLabel) %>%
+        dplyr::arrange(Cores)
+    curve$CoreLabel <- factor(curve$CoreLabel, levels = core_levels$CoreLabel)
+
+    plot <- ggplot2::ggplot(curve, ggplot2::aes(x = BaselineTime, y = GMeanSpeedup, color = CoreLabel)) +
+        ggplot2::geom_line(linewidth = 1.2) +
+        ggplot2::geom_hline(yintercept = 1, linewidth = 0.5, linetype = "dashed", color = "grey40") +
+        ggplot2::scale_x_log10() +
+        ggplot2::xlab(paste0("Baseline running time threshold at ", baseline_cores, " core", ifelse(baseline_cores == 1, "", "s"), " [s]")) +
+        ggplot2::ylab("Geometric mean speedup") +
+        ggplot2::guides(color = ggplot2::guide_legend(title = "Execution"))
+
+    if (length(colors) >= length(core_levels$CoreLabel)) {
+        plot <- plot + ggplot2::scale_color_manual(values = colors[seq_along(core_levels$CoreLabel)])
+    }
+
+    plot + ggplot2::ggtitle(paste0("Speedup: ", algorithm))
+}

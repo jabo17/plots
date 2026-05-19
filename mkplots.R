@@ -10,8 +10,9 @@
 #
 # Usage:
 #   Rscript /work/mkplots.R [--performance-profile] [--speedup] [--running-time]
+#                           [--plot <id>]...
 #                           [--threads T|NxMxT] [--output <path>]
-#                           <algo1> [<algo2> ...]
+#                           <source1> [<source2> ...]
 #
 # When no plot flags are given all three plots are generated (same as specifying
 # all three flags).
@@ -24,10 +25,11 @@ options(warn = 1)
 args <- commandArgs(trailingOnly = TRUE)
 
 do_performance_profile <- FALSE
-do_speedup             <- FALSE
+do_legacy_speedup      <- FALSE
 do_running_time        <- FALSE
 explicit_plots         <- FALSE
-algorithms             <- character(0)
+plot_ids               <- character(0)
+source_args            <- character(0)
 output_file            <- "/output/plots.pdf"
 thread_filter          <- NULL
 
@@ -59,9 +61,19 @@ while (i <= length(args)) {
   if        (arg == "--performance-profile") {
     do_performance_profile <- TRUE; explicit_plots <- TRUE
   } else if (arg == "--speedup") {
-    do_speedup             <- TRUE; explicit_plots <- TRUE
+    do_legacy_speedup      <- TRUE; explicit_plots <- TRUE
   } else if (arg == "--running-time") {
     do_running_time        <- TRUE; explicit_plots <- TRUE
+  } else if (arg == "--plot") {
+    i <- i + 1L
+    if (i > length(args)) {
+      cli::cli_abort("Missing value for --plot")
+    }
+    plot_ids <- c(plot_ids, args[[i]])
+    explicit_plots <- TRUE
+  } else if (startsWith(arg, "--plot=")) {
+    plot_ids <- c(plot_ids, substring(arg, 8L))
+    explicit_plots <- TRUE
   } else if (arg == "--output") {
     i <- i + 1L
     if (i > length(args)) {
@@ -79,7 +91,7 @@ while (i <= length(args)) {
   } else if (startsWith(arg, "--threads=")) {
     thread_filter <- parse_thread_filter(substring(arg, 11L))
   } else if (!startsWith(arg, "--")) {
-    algorithms <- c(algorithms, arg)
+    source_args <- c(source_args, arg)
   } else {
     cli::cli_alert_warning("Unknown argument ignored: {arg}")
   }
@@ -88,18 +100,40 @@ while (i <= length(args)) {
 
 if (!explicit_plots) {
   do_performance_profile <- TRUE
-  do_speedup             <- TRUE
+  do_legacy_speedup      <- TRUE
   do_running_time        <- TRUE
 }
 
-if (length(algorithms) == 0L) {
+if (length(source_args) == 0L) {
   cli::cli_abort(c(
-    "No algorithms specified.",
-    "i" = "Usage: mkplots.R [--performance-profile] [--speedup] [--running-time] <algo1> [<algo2> ...]"
+    "No plot sources specified.",
+    "i" = "Usage: mkplots.R [--plot <id>] [--output <path>] <source1> [<source2> ...]"
   ))
 }
 
-cli::cli_alert_info("Algorithms : {.val {algorithms}}")
+parse_source_arg <- function(value) {
+  if (grepl("=", value, fixed = TRUE)) {
+    parts <- strsplit(value, "=", fixed = TRUE)[[1]]
+    alias <- parts[[1]]
+    source <- paste(parts[-1], collapse = "=")
+  } else {
+    source <- value
+    if (grepl("\\.csv$", source, ignore.case = TRUE) || grepl("/", source, fixed = TRUE)) {
+      alias <- tools::file_path_sans_ext(basename(source))
+    } else {
+      alias <- source
+    }
+  }
+  if (!nzchar(alias) || !nzchar(source)) {
+    cli::cli_abort("Invalid plot source {.val {value}}")
+  }
+  list(alias = alias, source = source)
+}
+
+source_specs <- lapply(source_args, parse_source_arg)
+algorithms <- vapply(source_specs, function(spec) spec$alias, character(1L))
+
+cli::cli_alert_info("Sources    : {.val {algorithms}}")
 cli::cli_alert_info("Output     : {.path {output_file}}")
 if (!is.null(thread_filter)) {
   cli::cli_alert_info("Threads    : {.val {thread_filter$label}}")
@@ -130,16 +164,16 @@ colors   <- stats::setNames(palette, algorithms)
 
 cli::cli_h2("Loading datasets")
 
-dfs <- lapply(algorithms, function(algo) {
-  cli::cli_alert_info("Loading {.val {algo}}")
+dfs <- lapply(source_specs, function(spec) {
+  cli::cli_alert_info("Loading {.val {spec$alias}}")
   tryCatch(
     if (!is.null(thread_filter)) {
-      load_dataset(algo, algo, cache = FALSE, topology_filter = thread_filter)
+      load_dataset(spec$source, spec$alias, cache = FALSE, topology_filter = thread_filter)
     } else {
-      load_dataset(algo, algo, cache = FALSE)
+      load_dataset(spec$source, spec$alias, cache = FALSE)
     },
     error = function(e) {
-      cli::cli_alert_danger("Failed to load {.val {algo}}: {e$message}")
+      cli::cli_alert_danger("Failed to load {.val {spec$alias}}: {e$message}")
       NULL
     }
   )
@@ -178,9 +212,7 @@ grDevices::pdf(output_file, width = 10, height = 7)
 
 plots_written <- 0L
 
-# ── Performance profile ────────────────────────────────────────────────────────
-
-if (do_performance_profile) {
+render_performance_profile <- function() {
   if (length(dfs_common) < 2L) {
     cli::cli_alert_warning(
       "Performance profile requires >= 2 algorithms -- skipping"
@@ -201,16 +233,14 @@ if (do_performance_profile) {
         )
       )
       print(pp + default_theme)
-      plots_written <- plots_written + 1L
+      plots_written <<- plots_written + 1L
     }, error = function(e) {
       cli::cli_alert_danger("Performance profile failed: {e$message}")
     })
   }
 }
 
-# ── Speedup plot ───────────────────────────────────────────────────────────────
-
-if (do_speedup) {
+render_legacy_speedup <- function() {
   if (length(dfs_common) < 2L) {
     cli::cli_alert_warning(
       "Speedup plot requires >= 2 algorithms -- skipping"
@@ -229,16 +259,14 @@ if (do_speedup) {
         )
       )
       print(sp + default_theme)
-      plots_written <- plots_written + 1L
+      plots_written <<- plots_written + 1L
     }, error = function(e) {
       cli::cli_alert_danger("Speedup plot failed: {e$message}")
     })
   }
 }
 
-# ── Running time box plot ──────────────────────────────────────────────────────
-
-if (do_running_time) {
+render_running_time_box <- function() {
   cli::cli_h2("Running time box plot")
   tryCatch({
     rt <- do.call(
@@ -254,11 +282,13 @@ if (do_running_time) {
       )
     )
     print(rt + default_theme)
-    plots_written <- plots_written + 1L
+    plots_written <<- plots_written + 1L
   }, error = function(e) {
     cli::cli_alert_danger("Running time box plot failed: {e$message}")
   })
+}
 
+render_running_time_by_core <- function() {
   cli::cli_h2("Running time per-core box plot")
   tryCatch({
     rtc <- do.call(
@@ -271,11 +301,17 @@ if (do_running_time) {
       )
     )
     print(rtc + default_theme)
-    plots_written <- plots_written + 1L
+    plots_written <<- plots_written + 1L
   }, error = function(e) {
     cli::cli_alert_danger("Running time per-core box plot failed: {e$message}")
   })
+}
 
+render_relative_cut_graph_grid <- function() {
+  if (length(dfs_common) < 2L) {
+    cli::cli_alert_warning("Relative cut graph grid requires >= 2 algorithms -- skipping")
+    return()
+  }
   cli::cli_h2("Relative cut graph grid")
   tryCatch({
     rcg <- do.call(
@@ -291,11 +327,17 @@ if (do_running_time) {
       )
     )
     print(rcg + default_theme + relative_by_graph_grid_theme())
-    plots_written <- plots_written + 1L
+    plots_written <<- plots_written + 1L
   }, error = function(e) {
     cli::cli_alert_danger("Relative cut graph grid failed: {e$message}")
   })
+}
 
+render_relative_time_graph_grid <- function() {
+  if (length(dfs_common) < 2L) {
+    cli::cli_alert_warning("Relative running time graph grid requires >= 2 algorithms -- skipping")
+    return()
+  }
   cli::cli_h2("Relative running time graph grid")
   tryCatch({
     rtg <- do.call(
@@ -311,10 +353,59 @@ if (do_running_time) {
       )
     )
     print(rtg + default_theme + relative_by_graph_grid_theme())
-    plots_written <- plots_written + 1L
+    plots_written <<- plots_written + 1L
   }, error = function(e) {
     cli::cli_alert_danger("Relative running time graph grid failed: {e$message}")
   })
+}
+
+render_core_speedup <- function() {
+  if (length(dfs) != 1L) {
+    cli::cli_alert_warning("Speedup requires exactly one source -- skipping")
+    return()
+  }
+  cli::cli_h2("Speedup")
+  tryCatch({
+    core_colors <- c()
+    sp <- create_core_speedup_plot(dfs[[1]], colors = core_colors)
+    print(sp + default_theme)
+    plots_written <<- plots_written + 1L
+  }, error = function(e) {
+    cli::cli_alert_danger("Speedup failed: {e$message}")
+  })
+}
+
+# ── Plot rendering ─────────────────────────────────────────────────────────────
+
+for (plot_id in plot_ids) {
+  if (plot_id == "performance-profile") {
+    render_performance_profile()
+  } else if (plot_id == "running-time-box") {
+    render_running_time_box()
+  } else if (plot_id == "running-time-by-core") {
+    render_running_time_by_core()
+  } else if (plot_id == "relative-cut-graph-grid") {
+    render_relative_cut_graph_grid()
+  } else if (plot_id == "relative-time-graph-grid") {
+    render_relative_time_graph_grid()
+  } else if (plot_id == "speedup") {
+    render_core_speedup()
+  } else {
+    cli::cli_alert_danger("Unknown plot type: {.val {plot_id}}")
+  }
+}
+
+if (do_performance_profile) {
+  render_performance_profile()
+}
+if (do_legacy_speedup) {
+  render_legacy_speedup()
+}
+if (do_running_time) {
+  render_running_time_box()
+  render_running_time_by_core()
+  render_relative_cut_graph_grid()
+  render_relative_time_graph_grid()
 }
 
 # ── Close PDF ──────────────────────────────────────────────────────────────────

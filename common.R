@@ -190,8 +190,15 @@ load_dataset <- \(
     eps_offset = 0,
     cache = TRUE,
     topology_filter = NULL) {
-    real_filename <- paste0(DATA_INPUT_DIR, "/", filename, ".csv")
-    cache_filename <- paste0(CACHE_DIR, "/", gsub("/", "_", filename), ".cached.csv")
+    if (grepl("\\.csv$", filename, ignore.case = TRUE) || grepl("/", filename, fixed = TRUE)) {
+        real_filename <- filename
+        if (!startsWith(real_filename, "/")) {
+            real_filename <- file.path(DATA_INPUT_DIR, real_filename)
+        }
+    } else {
+        real_filename <- paste0(DATA_INPUT_DIR, "/", filename, ".csv")
+    }
+    cache_filename <- paste0(CACHE_DIR, "/", gsub("[^A-Za-z0-9_.-]", "_", paste(name, normalizePath(real_filename, mustWork = FALSE), sep = "__")), ".cached.csv")
     df <- data.frame()
 
     if (cache && file.exists(cache_filename)) {
