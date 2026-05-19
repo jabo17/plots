@@ -3,23 +3,23 @@ options(tidyverse.quiet = TRUE)
 
 library(tidyverse, warn.conflicts = FALSE)
 library(cli, warn.conflicts = FALSE)
-library(zoo, warn.conflicts = FALSE)
 library(RColorBrewer, warn.conflicts = FALSE)
-library(tikzDevice, warn.conflicts = FALSE)
-library(cumstats, warn.conflicts = FALSE)
-library(gridExtra, warn.conflicts = FALSE)
-library(ggpubr, warn.conflicts = FALSE)
 library(grid, warn.conflicts = FALSE)
 
-DATA_INPUT_DIR <- "/data"
-CACHE_DIR <- "/cache"
+env_or_default <- function(name, default) {
+    value <- Sys.getenv(name, unset = "")
+    if (nzchar(value)) value else default
+}
+
+DATA_INPUT_DIR <- env_or_default("MKEXP2_PLOTS_DATA_DIR", "/data")
+CACHE_DIR <- env_or_default("MKEXP2_PLOTS_CACHE_DIR", "/cache")
 
 TEX_CLASS <- "/doc/lipics-v2021"
 TEX_INPUT <- "/doc/definitions.tex"
 
-TEX_OUTPUT <- "/plots"
-DATA_OUTPUT <- "/data"
-PDF_OUTPUT <- "."
+TEX_OUTPUT <- env_or_default("MKEXP2_PLOTS_TEX_DIR", "/plots")
+DATA_OUTPUT <- env_or_default("MKEXP2_PLOTS_DATA_OUTPUT_DIR", DATA_INPUT_DIR)
+PDF_OUTPUT <- env_or_default("MKEXP2_PLOTS_PDF_DIR", ".")
 
 PDF_LABEL_TIMEOUT <- "T"
 PDF_LABEL_IMBALANCED <- "I"
@@ -320,6 +320,10 @@ open_pdf <- function(file, width = 7) {
 }
 
 open_tikz <- function(file, width = 5.5, height = 7, width.factor = 1.0, height.factor = 1.0) {
+    if (!requireNamespace("tikzDevice", quietly = TRUE)) {
+        cli::cli_abort("Package {.pkg tikzDevice} is required for TikZ output.")
+    }
+
     current_device_file <<- paste0(TEX_OUTPUT, "/", file, ".tex")
     current_device_file_is_tikz <<- TRUE
 

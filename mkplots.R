@@ -5,6 +5,8 @@
 #   /work   = this plots/ submodule directory (working dir; R sources live here)
 #   /data   = experiment's results/ directory (read-only CSV files)
 #   /output = experiment directory (plots.pdf written here)
+# Native execution can override those paths with MKEXP2_PLOTS_DATA_DIR,
+# MKEXP2_PLOTS_CACHE_DIR, and an explicit --output path.
 #
 # Usage:
 #   Rscript /work/mkplots.R [--performance-profile] [--speedup] [--running-time]
