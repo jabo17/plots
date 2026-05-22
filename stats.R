@@ -228,7 +228,6 @@ algorithm_stats <- purrr::map(algorithms, function(algorithm) {
   cuts_common_balanced <- metric_summary(rows$.cut[rows$.valid_balanced_cut & rows$.key %in% common_balanced_cut_keys])
   times_successful <- metric_summary(rows$.time[rows$.valid_time])
   times_common <- metric_summary(rows$.time[rows$.valid_time & rows$.key %in% common_time_keys])
-  imbalance_successful <- metric_summary(rows$.imbalance[rows$.completed & !is.na(rows$.imbalance)])
 
   list(
     algorithm = algorithm,
@@ -255,9 +254,6 @@ algorithm_stats <- purrr::map(algorithms, function(algorithm) {
     times = list(
       successful = times_successful,
       common_successful = times_common
-    ),
-    balance = list(
-      successful = imbalance_successful
     )
   )
 })
