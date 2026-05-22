@@ -196,12 +196,13 @@ create_core_speedup_plot <- \(
         dplyr::arrange(Cores)
     curve$CoreLabel <- factor(curve$CoreLabel, levels = core_levels$CoreLabel)
 
-    plot <- ggplot2::ggplot(curve, ggplot2::aes(x = BaselineTime, y = GMeanSpeedup, color = CoreLabel)) +
-        ggplot2::geom_line(linewidth = 1.2) +
+    plot <- ggplot2::ggplot(curve, ggplot2::aes(x = BaselineTime, color = CoreLabel)) +
+        ggplot2::geom_point(ggplot2::aes(y = Speedup), alpha = 0.55, size = 1.7) +
+        ggplot2::geom_line(ggplot2::aes(y = GMeanSpeedup, group = CoreLabel), linewidth = 1.15) +
         ggplot2::geom_hline(yintercept = 1, linewidth = 0.5, linetype = "dashed", color = "grey40") +
         ggplot2::scale_x_log10() +
         ggplot2::xlab(paste0("Baseline running time threshold at ", baseline_cores, " core", ifelse(baseline_cores == 1, "", "s"), " [s]")) +
-        ggplot2::ylab("Geometric mean speedup") +
+        ggplot2::ylab("Speedup") +
         ggplot2::guides(color = ggplot2::guide_legend(title = "Execution"))
 
     if (length(colors) >= length(core_levels$CoreLabel)) {
