@@ -2,6 +2,7 @@
 
 mkplots_pkgs <- c(
     "tidyverse",
+    "jsonlite",
     "plyr",
     "cli",
     "RColorBrewer"
@@ -9,6 +10,7 @@ mkplots_pkgs <- c(
 
 legacy_pkgs <- c(
     "tidyverse",
+    "jsonlite",
     "egg",
     "ggpubr",
     "gridExtra",
