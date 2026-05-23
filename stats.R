@@ -52,6 +52,18 @@ metric_summary <- function(values) {
   )
 }
 
+relative_summary <- function(values) {
+  values <- suppressWarnings(as.numeric(values))
+  values <- values[!is.na(values) & is.finite(values) & values >= 0]
+  count <- length(values)
+  if (count == 0L) {
+    return(list(count = 0L, ratio = NA_real_))
+  }
+
+  ratio <- if (any(values == 0)) 0 else exp(mean(log(values)))
+  list(count = count, ratio = unname(ratio))
+}
+
 truthy <- function(values) {
   normalized <- tolower(trimws(as.character(values)))
   normalized[is.na(normalized)] <- ""
@@ -67,7 +79,7 @@ parse_numeric <- function(values) {
 }
 
 json_array <- function(values) {
-  I(list(unname(as.character(values))))
+  I(as.list(unname(as.character(values))))
 }
 
 empty_result <- function() {
@@ -86,6 +98,7 @@ empty_result <- function() {
       missing_time = 0L
     ),
     common = list(cut_keys = 0L, balanced_cut_keys = 0L, time_keys = 0L),
+    comparisons = I(list()),
     algorithms = I(list())
   )
 }
@@ -186,7 +199,8 @@ data <- raw_data %>%
     .imbalanced = .data$.completed & .data$.has_balance & (.data$.imbalance > .data$.epsilon + 1e-12),
     .valid_cut = .data$.completed & !is.na(.data$.cut),
     .valid_balanced_cut = .data$.valid_cut & !.data$.imbalanced,
-    .valid_time = .data$.completed & !is.na(.data$.time)
+    .valid_time = .data$.completed & !is.na(.data$.time),
+    .valid_balanced_time = .data$.valid_time & !.data$.imbalanced
   )
 data$.key <- make_row_key(data, key_columns)
 
@@ -208,6 +222,59 @@ common_keys <- function(df, valid_column) {
 common_cut_keys <- common_keys(data, ".valid_cut")
 common_balanced_cut_keys <- common_keys(data, ".valid_balanced_cut")
 common_time_keys <- common_keys(data, ".valid_time")
+
+collapse_metric_values <- function(df, valid_column, value_column) {
+  df %>%
+    dplyr::filter(.data[[valid_column]]) %>%
+    dplyr::mutate(.value = suppressWarnings(as.numeric(.data[[value_column]]))) %>%
+    dplyr::filter(!is.na(.data$.value), is.finite(.data$.value), .data$.value >= 0) %>%
+    dplyr::group_by(.data$Algorithm, .data$.key) %>%
+    dplyr::summarise(
+      .value = {
+        values <- .data$.value
+        if (any(values == 0)) 0 else exp(mean(log(values)))
+      },
+      .rows = dplyr::n(),
+      .groups = "drop"
+    )
+}
+
+comparison_matrix <- function(id, title, value_column, valid_column) {
+  values <- collapse_metric_values(data, valid_column, value_column)
+
+  cells <- purrr::map(algorithms, function(row_algorithm) {
+    purrr::map(algorithms, function(column_algorithm) {
+      left <- values %>%
+        dplyr::filter(.data$Algorithm == row_algorithm) %>%
+        dplyr::transmute(.key = .data$.key, row_value = .data$.value)
+      right <- values %>%
+        dplyr::filter(.data$Algorithm == column_algorithm) %>%
+        dplyr::transmute(.key = .data$.key, column_value = .data$.value)
+      joined <- dplyr::inner_join(left, right, by = ".key")
+      summary <- relative_summary(joined$row_value / joined$column_value)
+      list(
+        row_algorithm = row_algorithm,
+        column_algorithm = column_algorithm,
+        count = summary$count,
+        ratio = summary$ratio
+      )
+    })
+  }) %>% purrr::flatten()
+
+  list(
+    id = id,
+    title = title,
+    algorithms = json_array(algorithms),
+    cells = I(cells)
+  )
+}
+
+comparison_matrices <- list(
+  comparison_matrix("time_all", "Time (all)", ".time", ".valid_time"),
+  comparison_matrix("time_balanced", "Time (balanced)", ".time", ".valid_balanced_time"),
+  comparison_matrix("cut_all", "Cut (all)", ".cut", ".valid_cut"),
+  comparison_matrix("cut_balanced", "Cut (balanced only)", ".cut", ".valid_balanced_cut")
+)
 
 algorithm_stats <- purrr::map(algorithms, function(algorithm) {
   rows <- data %>% dplyr::filter(.data$Algorithm == algorithm)
@@ -279,6 +346,7 @@ result <- list(
     balanced_cut_keys = length(common_balanced_cut_keys),
     time_keys = length(common_time_keys)
   ),
+  comparisons = I(comparison_matrices),
   key_columns = json_array(key_columns),
   algorithms = algorithm_stats
 )
