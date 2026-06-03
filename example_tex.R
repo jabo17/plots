@@ -12,7 +12,8 @@ example_performance_plot <- create_performance_profile_plot(
         mtmetis,
         # ... add more datasets here ...
         # Remove the next line if you do not want to use custom colors
-        colors = colors
+        colors = colors,
+        tex = TRUE
     ) +
     ggplot2::theme_bw() +
     default_theme +
@@ -24,7 +25,8 @@ example_running_time_box_plot <- create_running_time_box_plot(
         kaminpar_fm,
         mtmetis,
         colors = colors,
-        annotate = "none"
+        annotate = "none",
+        tex = TRUE
     ) +
     ggplot2::theme_bw() +
     default_theme +

@@ -14,6 +14,19 @@ relative_by_graph_grid_theme <- \() {
     )
 }
 
+#' Plot per-graph relative cut or running time bars.
+#'
+#' @param ... Normalized result data frames to compare with `baseline`.
+#' @param baseline Baseline data frame.
+#' @param metric Either `"cut"` or `"time"`.
+#' @param primary_key Columns used to align rows.
+#' @param column.algorithm,column.graph,column.cores,column.cut,column.time Source
+#'   column names.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param plot.xlab,plot.ylab Axis labels; `NULL` y-label uses the metric label.
+#' @param y.breaks Candidate y-axis breaks.
+#' @param tex Whether labels supplied by the caller are TeX labels.
 create_relative_by_graph_grid_plot <- \(
     ...,
     baseline,
@@ -28,7 +41,8 @@ create_relative_by_graph_grid_plot <- \(
     levels = c(),
     plot.xlab = "Cores",
     plot.ylab = NULL,
-    y.breaks = c(0, 0.5, 1.0, 1.5, 2.0)
+    y.breaks = c(0, 0.5, 1.0, 1.5, 2.0),
+    tex = FALSE
 ) {
     metric <- match.arg(metric)
     column.value <- if (metric == "cut") column.cut else column.time

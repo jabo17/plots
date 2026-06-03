@@ -3,6 +3,26 @@ show_timeout <- \(df, option) option == "always" || (option == "auto" && any(df$
 show_imbalanced <- \(df, option) option == "always" || (option == "auto" && any(df$Imbalanced))
 show_failed <- \(df, option) option == "always" || (option == "auto" && any(df$Failed))
 
+#' Plot per-instance running times as algorithm box plots.
+#'
+#' @param ... Normalized result data frames with identical primary keys.
+#' @param column.time,column.algorithm,column.timeout,column.imbalanced,column.failed
+#'   Source column names.
+#' @param primary_key Columns used to align rows.
+#' @param exclude.imbalanced If `TRUE`, move imbalanced rows to the error tick
+#'   band instead of including their running time.
+#' @param tick.timeout,tick.imbalanced,tick.failed `"auto"`, `"always"`, or any
+#'   other value to hide each error tick.
+#' @param tick.errors.space_below,tick.errors.space_between Log-axis spacing for
+#'   error ticks.
+#' @param tex If `TRUE`, use TeX math and symbolic error labels.
+#' @param label.timeout,label.imbalanced,label.failed Labels for error ticks.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param annotate `"none"`, `"minimal"`, or `"extensive"` geometric-mean labels.
+#' @param annotate.position Divider controlling minimal annotation y-position.
+#' @param position.y Y-axis position.
+#' @param plot.xlab,plot.ylab Axis labels; set to `NA` to omit.
 create_running_time_box_plot <- \(
     ...,
     column.time = "AvgTime",
@@ -17,9 +37,10 @@ create_running_time_box_plot <- \(
     tick.failed = "auto",
     tick.errors.space_below = 0.8,
     tick.errors.space_between = 0.8,
-    label.timeout = TEX_LABEL_TIMEOUT,
-    label.imbalanced = TEX_LABEL_IMBALANCED,
-    label.failed = TEX_LABEL_FAILED,
+    tex = FALSE,
+    label.timeout = plot_label(tex, TEX_LABEL_TIMEOUT, PDF_LABEL_TIMEOUT),
+    label.imbalanced = plot_label(tex, TEX_LABEL_IMBALANCED, PDF_LABEL_IMBALANCED),
+    label.failed = plot_label(tex, TEX_LABEL_FAILED, PDF_LABEL_FAILED),
     colors = c(),
     levels = c(),
     annotate = "minimal", # none, minimal, extensive
@@ -109,7 +130,7 @@ create_running_time_box_plot <- \(
 
     # Create ticks
     y_breaks <- 10 ^ seq(min_time_log10, max_time_log10, by = 1)
-    y_labels <- sapply(y_breaks, \(val) paste0("$10^{", log10(val), "}$"))
+    y_labels <- plot_power_label(10, log10(y_breaks), tex)
 
     show_imbalanced_tick <- show_imbalanced(data, tick.imbalanced)
     show_timeout_tick <- show_timeout(data, tick.timeout)

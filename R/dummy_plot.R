@@ -1,10 +1,18 @@
 #!/usr/bin/env Rscript
 
+#' Create an empty plot that only carries an algorithm legend.
+#'
+#' @param ... Data frames with an `Algorithm` column.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param title Legend title, `NULL`, or `ggplot2::waiver()`.
+#' @param tex Whether labels supplied by the caller are TeX labels.
 create_dummy_plot <- \(
     ..., 
     colors = c(), 
     levels = c(),
-    title = ggplot2::waiver() # can be NULL
+    title = ggplot2::waiver(), # can be NULL
+    tex = FALSE
 ) {
     data <- do.call(rbind, lapply(list(...), \(df) df["Algorithm"]))
     if (length(levels) > 0) {

@@ -39,6 +39,14 @@ PP_RATIO_IMBALANCED <- 1000000
 PP_RATIO_TIMEOUT <- 2000000
 PP_RATIO_FAILED <- 3000000
 
+#' Compute performance-profile curve data.
+#'
+#' @param ... Normalized result data frames with identical primary keys.
+#' @param fractions Ratios at which to sample the step curves.
+#' @param column.objective,column.algorithm,column.timeout,column.imbalanced,column.failed
+#'   Source column names.
+#' @param primary_key Columns that identify common instances.
+#' @return A data frame suitable for performance-profile plotting.
 create_performance_profile_data <- function(
     ...,
     fractions = c(
@@ -100,6 +108,22 @@ create_performance_profile_data <- function(
 }
 
 
+#' Plot a performance profile over multiple algorithms.
+#'
+#' @param ... Normalized result data frames with identical primary keys.
+#' @param column.objective,column.algorithm,column.timeout,column.imbalanced,column.failed
+#'   Source column names.
+#' @param primary_key Columns that identify common instances.
+#' @param segments Axis segments defining the broken/log-scaled ratio axis.
+#' @param segment.errors.width Width reserved for imbalanced, timeout, and failed
+#'   markers.
+#' @param tex If `TRUE`, use TeX math and symbolic error labels.
+#' @param label.timeout,label.imbalanced,label.failed Labels for error markers.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param axis.y.sparse_labels If `TRUE`, label every other y tick.
+#' @param plot.xlab,plot.ylab Axis labels; set to `NA` to omit.
+#' @param legend.title Legend title, `NULL`, or `ggplot2::waiver()`.
 create_performance_profile_plot <- \(
     ...,
     column.objective = "AvgCut",
@@ -110,9 +134,10 @@ create_performance_profile_plot <- \(
     primary_key = c("Graph", "K"),
     segments = default_performance_profile_segments,
     segment.errors.width = 1.5,
-    label.timeout = TEX_LABEL_TIMEOUT,
-    label.imbalanced = TEX_LABEL_IMBALANCED,
-    label.failed = TEX_LABEL_FAILED,
+    tex = FALSE,
+    label.timeout = plot_label(tex, TEX_LABEL_TIMEOUT, PDF_LABEL_TIMEOUT),
+    label.imbalanced = plot_label(tex, TEX_LABEL_IMBALANCED, PDF_LABEL_IMBALANCED),
+    label.failed = plot_label(tex, TEX_LABEL_FAILED, PDF_LABEL_FAILED),
     colors = c(),
     levels = c(),
     axis.y.sparse_labels = TRUE,
@@ -255,7 +280,7 @@ create_performance_profile_plot <- \(
         span <- max_value - min_value
 
         x_breaks <- c(x_breaks, sapply(segment$breaks, \(v) offset + segment$width * (do.call(segment$trans, list(v)) - min_value) / span))
-        x_labels <- c(x_labels, paste0("$", segment$labels, "$"))
+        x_labels <- c(x_labels, if (tex) plot_math_label(segment$labels, tex) else segment$labels)
 
         offset <- offset + segment$width
         from <- segment$to

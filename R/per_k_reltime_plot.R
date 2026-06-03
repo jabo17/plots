@@ -1,5 +1,15 @@
 #!/usr/bin/env Rscript
 
+#' Plot relative running time by k against a baseline.
+#'
+#' @param ... Normalized result data frames to compare with `baseline`.
+#' @param baseline Baseline data frame.
+#' @param relation Either `"speedup"` or `"slowdown"`.
+#' @param partial If `FALSE`, drop graphs where a compared algorithm failed.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param ks Optional k values to consider; defaults to baseline k values.
+#' @param tex If `TRUE`, render powers as TeX math labels.
 create_per_k_reltime_plot <- \(
     ...,
     baseline,
@@ -7,7 +17,8 @@ create_per_k_reltime_plot <- \(
     partial = TRUE,
     colors = c(),
     levels = c(),
-    ks = c()
+    ks = c(),
+    tex = FALSE
 ) {
     if (length(ks) == 0) {
         ks <- unique(baseline$K)
@@ -50,12 +61,12 @@ create_per_k_reltime_plot <- \(
         ggplot2::scale_x_continuous(
             trans = "log2",
             breaks = c(2^2, 2**4, 2**6, 2**11, 2**14, 2**17, 2**20),
-            labels = c("$2^2$", "$2^4$", "$2^6$", "$2^{11}$", "$2^{14}$", "$2^{17}$", "$2^{20}$")
+            labels = plot_power_label(2, c(2, 4, 6, 11, 14, 17, 20), tex)
         ) +
         ggplot2::scale_y_continuous(
             trans = "log2",
             breaks = c(1/2, 1, 2, 4, 8, 16, 32, 64, 128, 256),
-            labels = c("$2^{-1}$", "$2^0$", "", "$2^2$", "", "$2^4$", "", "$2^6$", "", "$2^8$")
+            labels = c(plot_power_label(2, -1, tex), plot_power_label(2, 0, tex), "", plot_power_label(2, 2, tex), "", plot_power_label(2, 4, tex), "", plot_power_label(2, 6, tex), "", plot_power_label(2, 8, tex))
         ) +
         ggplot2::ylab(ifelse(relation == "speedup", "Relative Speedup", "Relative Slowdown"))
 
@@ -65,4 +76,3 @@ create_per_k_reltime_plot <- \(
 
     return(plot)
 }
-

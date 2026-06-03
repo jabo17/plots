@@ -1,5 +1,17 @@
 #!/usr/bin/env Rscript
 
+#' Plot per-graph running time relative to a baseline.
+#'
+#' @param ... Normalized result data frames to compare with `baseline`.
+#' @param baseline Baseline data frame.
+#' @param primary_key Columns used to align rows.
+#' @param column.graph,column.time,column.timeout,column.algorithm,column.failed
+#'   Source column names.
+#' @param namer Function applied to algorithm names.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param plot.xlab,plot.ylab Axis labels; set to `NA` to omit.
+#' @param tex If `TRUE`, use TeX thin-space labels for baseline seconds.
 create_relative_running_time_bar_plot <- function(
     ...,
     baseline,
@@ -13,7 +25,8 @@ create_relative_running_time_bar_plot <- function(
     colors = c(),
     levels = c(),
     plot.xlab = "Graph",
-    plot.ylab = "Relative Running Time"
+    plot.ylab = "Relative Running Time",
+    tex = FALSE
 ) {
     all_datasets <- list(...)
     stopifnot(length(all_datasets) > 0)
@@ -83,7 +96,7 @@ create_relative_running_time_bar_plot <- function(
         ) +
         ggplot2::geom_text(
             ggplot2::aes(
-                label = ifelse(Algorithm == baseline_name, sprintf("%.0f\\,s", Time), ""), 
+                label = ifelse(Algorithm == baseline_name, if (tex) sprintf("%.0f\\,s", Time) else sprintf("%.0f s", Time), ""),
                 color = Algorithm
             ),
             position = ggplot2::position_dodge(width = 0.8),

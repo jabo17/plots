@@ -1,5 +1,16 @@
 #!/usr/bin/env Rscript
 
+#' Plot peak memory per graph as grouped bars.
+#'
+#' @param ... Normalized result data frames to compare.
+#' @param primary_key Columns used to align rows before plotting.
+#' @param column.graph,column.memory,column.algorithm,column.failed Source column
+#'   names for graph labels, memory values, algorithms, and failures.
+#' @param colors Optional named algorithm colors.
+#' @param namer Function applied to algorithm names.
+#' @param levels Optional algorithm ordering.
+#' @param plot.xlab,plot.ylab Axis labels; set to `NA` to omit.
+#' @param tex If `TRUE`, use TeX formatting for out-of-memory labels.
 create_memory_bar_plot <- function(
     ...,
     primary_key = c("Graph", "K"),
@@ -11,7 +22,8 @@ create_memory_bar_plot <- function(
     namer = identity,
     levels = c(),
     plot.xlab = "Graph",
-    plot.ylab = "Peak Memory [TiB]"
+    plot.ylab = "Peak Memory [TiB]",
+    tex = FALSE
 ) {
     all_datasets <- list(...)
     stopifnot(length(all_datasets) > 0)
@@ -47,7 +59,7 @@ create_memory_bar_plot <- function(
         ggplot2::geom_bar(stat = "identity", position = ggplot2::position_dodge(), width = 0.8) +
         ggplot2::geom_text(
             ggplot2::aes(
-                label = ifelse(Memory == 0, "OOM ($>1.5$\\,TiB)", ""), 
+                label = ifelse(Memory == 0, if (tex) "OOM ($>1.5$\\,TiB)" else "OOM (>1.5 TiB)", ""),
                 color = Algorithm
             ), 
             vjust = 0.5, 
@@ -74,4 +86,3 @@ create_memory_bar_plot <- function(
 
     return(p)
 }
-

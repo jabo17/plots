@@ -1,13 +1,25 @@
 #!/usr/bin/env Rscript
 
+#' Plot large-k throughput over compute nodes.
+#'
+#' @param ... Normalized distributed result data frames.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param plot.xlab,plot.ylab Axis labels; `NULL` uses defaults, `NA` omits.
+#' @param plot.title Optional plot title; set to `NA` to omit.
+#' @param tex If `TRUE`, render math axis labels as TeX.
 create_largek_throughput_plot <- \(
     ..., 
     colors = c(),
     levels = c(),
-    plot.xlab = "Compute Nodes ($P$)",
+    plot.xlab = NULL,
     plot.ylab = "Throughput [Edges / s]",
-    plot.title = NA
+    plot.title = NA,
+    tex = FALSE
 ) {
+    if (is.null(plot.xlab)) {
+        plot.xlab <- if (tex) "Compute Nodes ($P$)" else "Compute Nodes (P)"
+    }
     all_dfs <- list(...)
 
     data <- purrr::map_dfr(all_dfs, \(df) {
@@ -33,7 +45,7 @@ create_largek_throughput_plot <- \(
         )
 
     y.breaks = seq(20, 35, by = 2)
-    y.labels = paste0("$2^{", y.breaks, "}$")
+    y.labels = plot_power_label(2, y.breaks, tex)
 
     p <- ggplot2::ggplot(
         data, 
@@ -77,4 +89,3 @@ create_largek_throughput_plot <- \(
 
     return(p)
 }
-

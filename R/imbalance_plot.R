@@ -1,10 +1,22 @@
 #!/usr/bin/env Rscript
+
+#' Plot observed imbalances above the requested epsilon.
+#'
+#' @param ... Normalized result data frames.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param annotation Optional annotation data frame with `Algorithm` and
+#'   `Annotation` columns.
+#' @param annotate.counts If `TRUE`, annotate each algorithm with its imbalanced
+#'   row count.
+#' @param tex If `TRUE`, use TeX percent labels; otherwise use plain labels.
 create_imbalance_plot <- function(
     ...,
     colors = c(),
     levels = c(),
     annotation = data.frame(),
-    annotate.counts = FALSE) {
+    annotate.counts = FALSE,
+    tex = FALSE) {
     #
     data <- do.call(rbind, list(...))
     data <- data %>% dplyr::filter(MinImbalance > Epsilon)
@@ -18,9 +30,9 @@ create_imbalance_plot <- function(
         ggplot2::scale_y_continuous(
             trans = "log2",
             breaks = c(0.03, 0.1, 0.30, 1.00, 3.0),
-            labels = c("3\\%", "10\\%", "30\\%", "100\\%", "300\\%"),
+            labels = plot_percent_label(c(3, 10, 30, 100, 300), tex),
         ) +
-        ggplot2::ylab("Imbalance [\\%]")
+        ggplot2::ylab(if (tex) "Imbalance [\\%]" else "Imbalance [%]")
 
     if (length(colors) > 0) {
         plot <- plot + 

@@ -1,31 +1,22 @@
-###
-# Creates a stacked bar plot showing the breakdown of total partitioning time into different components.
-#
-# `data`: A data frame, where each row corresponds to a graph, and contains columns for:
-# - the graph name (not shown anywhere)
-# - the total partitioning time (if `column.total_time` is NULL, this is computed as the sum of the columns in `cols`)
-# - the time spent in each component listed in `cols`
-#
-# `cols`: A character vector of column names in `data` that contain the time spent in each component.
-#
-# `column.graph`: The name of the column in `data` that contains the graph names (default: "Graph").
-#
-# `column.total_time`: The name of the column in `data` that contains the total partitioning time (default: "AvgTime").
-# If NULL, the total time is computed as the sum of the columns in `cols`.
-#
-# `column.remaining_time`: The name of the column to create that contains the remaining time (
-# total time minus sum of `cols`) (default: "AvgTimeRemaining").
-#
-# `normalize`: If TRUE, the times are normalized by the total time to show fractions (default: TRUE).
-# If FALSE, absolute times are shown.
-###
+#' Plot a stacked running-time breakdown.
+#'
+#' @param data Data frame with one row per graph and timing component columns.
+#' @param cols Timing component column names.
+#' @param column.graph Graph-name column.
+#' @param column.total_time Total-time column, or `NULL` to use the sum of
+#'   `cols`.
+#' @param column.remaining_time Generated column for total time not covered by
+#'   `cols`.
+#' @param normalize If `TRUE`, plot time fractions; otherwise plot seconds.
+#' @param tex Whether labels supplied by the caller are TeX labels.
 create_running_time_breakdown_plot <- function(
     data,
     cols,
     column.graph = "Graph",
     column.total_time = "AvgTime",
     column.remaining_time = "AvgTimeRemaining",
-    normalize = TRUE
+    normalize = TRUE,
+    tex = FALSE
 ) {
     # If there is no column for the total time, compute it as the sum of the columns in `cols`
     if (is.null(column.total_time)) {

@@ -1,4 +1,19 @@
 #!/usr/bin/env Rscript
+
+#' Plot peak memory relative to a baseline.
+#'
+#' @param baseline Baseline data frame.
+#' @param via_heap,via_rss Lists of normalized data frames compared through heap
+#'   or RSS memory columns.
+#' @param primary_key Columns used to align rows.
+#' @param column.algorithm,column.heap,column.rss,column.failed,column.m,column.plot_per_instance
+#'   Source column names.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param window_size Rolling-window size for the smoothed curve.
+#' @param namer Function applied to algorithm names.
+#' @param plot.xlab,plot.ylab Axis labels; set to `NA` to omit.
+#' @param tex Whether labels supplied by the caller are TeX labels.
 create_relative_memory_plot <- \(
     baseline,
     via_heap = list(),
@@ -15,7 +30,8 @@ create_relative_memory_plot <- \(
     window_size = 50,
     namer = identity,
     plot.xlab = "Number of Edges",
-    plot.ylab = "Relative Peak Memory"
+    plot.ylab = "Relative Peak Memory",
+    tex = FALSE
 ) {
     baseline <- baseline %>%
         dplyr::arrange_at(primary_key)

@@ -1,4 +1,19 @@
 #!/usr/bin/env Rscript
+
+#' Plot speedup or slowdown relative to a baseline algorithm.
+#'
+#' @param ... Normalized result data frames to compare with `baseline`.
+#' @param baseline Baseline data frame.
+#' @param fails.show If `TRUE`, show markers for incomplete comparison curves.
+#' @param y.cap Optional cap for y-values.
+#' @param primary_key Columns used to align rows.
+#' @param column.time,column.timeout,column.algorithm,column.failed Source column
+#'   names.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param mode Either `"speedup"` or `"slowdown"`.
+#' @param x.by X-axis tick interval.
+#' @param tex Whether labels supplied by the caller are TeX labels.
 create_speedup_plot <- \(
     ...,
     baseline,
@@ -12,7 +27,8 @@ create_speedup_plot <- \(
     colors = c(),
     levels = c(),
     mode = c("speedup", "slowdown"),
-    x.by = 100
+    x.by = 100,
+    tex = FALSE
 ) {
     mode <- match.arg(mode)
 
@@ -133,13 +149,22 @@ create_speedup_plot <- \(
     return (plot)
 }
 
+#' Plot within-algorithm speedup over increasing core counts.
+#'
+#' @param df Normalized result data frame for one algorithm.
+#' @param primary_key Columns used to match baseline-core rows to larger-core
+#'   rows.
+#' @param column.time,column.cores,column.algorithm Source column names.
+#' @param colors Optional colors for core-count curves.
+#' @param tex Whether labels supplied by the caller are TeX labels.
 create_core_speedup_plot <- \(
     df,
     primary_key = c("Graph", "K", "Epsilon"),
     column.time = "AvgTime",
     column.cores = "Cores",
     column.algorithm = "Algorithm",
-    colors = c()
+    colors = c(),
+    tex = FALSE
 ) {
     required <- c(primary_key, column.time, column.cores, column.algorithm)
     missing <- setdiff(required, colnames(df))

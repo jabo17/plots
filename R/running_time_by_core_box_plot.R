@@ -1,5 +1,19 @@
 #!/usr/bin/env Rscript
 
+#' Plot running-time distributions grouped by core count and algorithm.
+#'
+#' @param ... Normalized result data frames.
+#' @param column.time,column.algorithm,column.cores,column.timeout,column.imbalanced,column.failed
+#'   Source column names.
+#' @param primary_key Columns used to align comparable rows.
+#' @param exclude.imbalanced If `TRUE`, remove imbalanced rows from timing
+#'   comparisons.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param annotate `"none"` or `"minimal"` geometric-mean labels.
+#' @param annotate.position Divider controlling annotation y-position.
+#' @param plot.xlab,plot.ylab Axis labels; set to `NA` to omit.
+#' @param tex If `TRUE`, render log ticks as TeX math labels.
 create_running_time_by_core_box_plot <- \(
     ...,
     column.time = "AvgTime",
@@ -15,7 +29,8 @@ create_running_time_by_core_box_plot <- \(
     annotate = "minimal", # none, minimal
     annotate.position = 2,
     plot.xlab = "Cores",
-    plot.ylab = "Time [s]"
+    plot.ylab = "Time [s]",
+    tex = FALSE
 ) {
     all_dfs <- list(...)
 
@@ -97,7 +112,7 @@ create_running_time_by_core_box_plot <- \(
     max_time_log10 <- ceiling(log10(y_range$Max))
     min_time_log10 <- floor(log10(y_range$Min))
     y_breaks <- 10 ^ seq(min_time_log10, max_time_log10, by = 1)
-    y_labels <- sapply(y_breaks, \(val) paste0("$10^{", log10(val), "}$"))
+    y_labels <- plot_power_label(10, log10(y_breaks), tex)
 
     annotation <- data %>%
         dplyr::group_by(CoreLabel, Algorithm) %>%

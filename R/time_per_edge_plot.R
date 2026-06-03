@@ -1,4 +1,17 @@
 #!/usr/bin/env Rscript
+
+#' Plot rolling time per edge over graph size.
+#'
+#' @param ... Normalized result data frames with identical primary keys and edge
+#'   counts.
+#' @param column.time,column.algorithm,column.timeout,column.failed,column.m
+#'   Source column names.
+#' @param primary_key Columns used to align rows.
+#' @param window_size Rolling-window size.
+#' @param points Algorithm names for which per-instance points should be shown.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param tex Whether labels supplied by the caller are TeX labels.
 create_time_per_edge_plot <- function(
     ...,
     column.time = "AvgTime",
@@ -10,7 +23,8 @@ create_time_per_edge_plot <- function(
     window_size = 50,
     points = c(),
     colors = c(),
-    levels = c()) {
+    levels = c(),
+    tex = FALSE) {
     #
     all_dfs <- list(...)
     if (length(all_dfs) == 0) {

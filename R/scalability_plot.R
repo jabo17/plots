@@ -1,12 +1,21 @@
 #!/usr/bin/env Rscript
 
+#' Plot strong-scaling speedup curves over sequential running time.
+#'
+#' @param data Normalized result data frame containing multiple core counts.
+#' @param column.time Running-time column.
+#' @param colors Optional named core-count colors.
+#' @param mean Cumulative mean curve: `"Gmean"` or `"Hmean"`.
+#' @param scale_x,scale_y If `TRUE`, use log-scaled axes.
+#' @param tex Whether labels supplied by the caller are TeX labels.
 create_scalability_plot <- function(
     data,
     column.time = "AvgTime",
     colors = c(),
     mean = "Gmean", # Gmean or Hmean
     scale_x = TRUE,
-    scale_y = TRUE) {
+    scale_y = TRUE,
+    tex = FALSE) {
     #
     core_counts <- unique(data$Cores)
     graphs <- unique(data$Graph)

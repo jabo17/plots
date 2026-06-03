@@ -29,6 +29,23 @@ TEX_LABEL_TIMEOUT <- "\\SymbTimeout"
 TEX_LABEL_IMBALANCED <- "\\SymbImbalanced"
 TEX_LABEL_FAILED <- "\\SymbFailed"
 
+plot_label <- function(tex, tex_label, plain_label) {
+    if (isTRUE(tex)) tex_label else plain_label
+}
+
+plot_math_label <- function(value, tex = FALSE) {
+    if (isTRUE(tex)) paste0("$", value, "$") else value
+}
+
+plot_power_label <- function(base, exponent, tex = FALSE) {
+    plain <- paste0(base, "^", exponent)
+    if (isTRUE(tex)) paste0("$", base, "^{", exponent, "}$") else plain
+}
+
+plot_percent_label <- function(value, tex = FALSE) {
+    if (isTRUE(tex)) paste0(value, "\\%") else paste0(value, "%")
+}
+
 DEFAULT_TIMELIMIT <- 90 * 60 
 DEFAULT_EPSILON <- 0.03
 

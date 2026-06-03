@@ -1,14 +1,27 @@
 #!/usr/bin/env Rscript
 
+#' Plot small-k throughput over compute nodes.
+#'
+#' @param ... Normalized distributed result data frames.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param plot.title Optional plot title; set to `NA` to omit.
+#' @param debug If `TRUE`, print the prepared data frame.
+#' @param plot.xlab,plot.ylab Axis labels; `NULL` uses defaults, `NA` omits.
+#' @param tex If `TRUE`, render math axis labels as TeX.
 create_smallk_throughput_plot <- \(
     ...,
     colors = c(),
     levels = c(),
     plot.title = NA,
     debug = FALSE,
-    plot.xlab = "Compute Nodes ($P$)",
-    plot.ylab = "Throughput [Edges / s]"
+    plot.xlab = NULL,
+    plot.ylab = "Throughput [Edges / s]",
+    tex = FALSE
 ) {
+    if (is.null(plot.xlab)) {
+        plot.xlab <- if (tex) "Compute Nodes ($P$)" else "Compute Nodes (P)"
+    }
     all_dfs <- list(...)
 
     data <- purrr::map_dfr(all_dfs, \(df) {
@@ -38,7 +51,7 @@ create_smallk_throughput_plot <- \(
     }
 
     y.breaks = seq(25, 35, by = 2)
-    y.labels = paste0("$2^{", y.breaks, "}$")
+    y.labels = plot_power_label(2, y.breaks, tex)
 
     p <- ggplot2::ggplot(
         data, 
@@ -83,16 +96,31 @@ create_smallk_throughput_plot <- \(
     return(p)
 }
 
+#' Plot small-k throughput with graph-specific line types.
+#'
+#' @param ... Normalized distributed result data frames.
+#' @param colors Optional named algorithm colors.
+#' @param levels Optional algorithm ordering.
+#' @param plot.title Optional plot title; set to `NA` to omit.
+#' @param debug If `TRUE`, print the prepared data frame.
+#' @param plot.xlab,plot.ylab Axis labels; `NULL` uses defaults, `NA` omits.
+#' @param mark_feasibility If `TRUE`, mark feasible, imbalanced, and timeout
+#'   rows with different shapes.
+#' @param tex If `TRUE`, render math axis labels as TeX.
 create_smallk_multigraph_throughput_plot <- \(
     ...,
     colors = c(),
     levels = c(),
     plot.title = NA,
     debug = FALSE,
-    plot.xlab = "Compute Nodes ($P$)",
+    plot.xlab = NULL,
     plot.ylab = "Throughput [Edges / s]",
-    mark_feasibility = TRUE
+    mark_feasibility = TRUE,
+    tex = FALSE
 ) {
+    if (is.null(plot.xlab)) {
+        plot.xlab <- if (tex) "Compute Nodes ($P$)" else "Compute Nodes (P)"
+    }
     all_dfs <- list(...)
 
     data <- purrr::map_dfr(all_dfs, \(df) {
@@ -123,7 +151,7 @@ create_smallk_multigraph_throughput_plot <- \(
     }
 
     y.breaks = seq(25, 35, by = 2)
-    y.labels = paste0("$2^{", y.breaks, "}$")
+    y.labels = plot_power_label(2, y.breaks, tex)
 
     p <- ggplot2::ggplot(
         data, 
@@ -170,5 +198,4 @@ create_smallk_multigraph_throughput_plot <- \(
 
     return(p)
 }
-
 
