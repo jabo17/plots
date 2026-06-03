@@ -3,8 +3,9 @@
 `mkexp.R` is the single mkexp2 entry point for this submodule:
 
 ```sh
-Rscript mkexp.R plot [--plot <id>]... [--threads T|NxMxT] [--output plots.pdf] <source>...
-Rscript mkexp.R stats [--results results] [--json]
+./mkexp.R plot [--list] [--json]
+./mkexp.R plot [--plot <id>]... [--threads T|NxMxT] [--output plots.pdf] <source>...
+./mkexp.R stats [--results results] [--json]
 ```
 
 Reusable plotting and stats code lives in `R/`. The old mkexp2 stats backend is

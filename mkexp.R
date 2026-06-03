@@ -29,24 +29,14 @@ source_mkexp_file <- function(path) {
 mkexp_usage <- function() {
   cat(paste(
     "Usage:",
-    "  mkexp.R plot [--plot <id>]... [--threads T|NxMxT] [--output <path>] [--tex] <source>...",
+    "  mkexp.R plot [--list] [--json]",
+    "  mkexp.R plot [--plot <id>]... [--threads T|NxMxT] [--output <path>] <source>...",
     "  mkexp.R stats [--results DIR] [--json]",
     "",
     "For compatibility, omitting the subcommand runs plot mode.",
     sep = "\n"
   ))
   cat("\n")
-}
-
-parse_bool <- function(value, option) {
-  normalized <- tolower(trimws(as.character(value)))
-  if (normalized %in% c("1", "true", "t", "yes", "y", "on")) {
-    return(TRUE)
-  }
-  if (normalized %in% c("0", "false", "f", "no", "n", "off")) {
-    return(FALSE)
-  }
-  cli::cli_abort("{option} expects a boolean value, got {.val {value}}")
 }
 
 parse_thread_filter <- function(value) {
@@ -90,6 +80,81 @@ parse_source_arg <- function(value) {
   list(alias = alias, source = source)
 }
 
+plot_catalog_entry <- function(
+  id,
+  name,
+  description,
+  min_sources,
+  max_sources,
+  default_selected,
+  expensive,
+  ...
+) {
+  list(
+    id = id,
+    name = name,
+    description = description,
+    min_sources = min_sources,
+    max_sources = if (is.null(max_sources)) NA_integer_ else max_sources,
+    default_selected = default_selected,
+    expensive = expensive,
+    legacy_flags = I(as.list(c(...)))
+  )
+}
+
+plot_catalog <- function() {
+  list(
+    plot_catalog_entry(
+      "performance-profile",
+      "Performance Profile",
+      "Compares algorithms by the fraction of instances solved within a cut or running-time ratio.",
+      2, NULL, TRUE, FALSE, "--performance-profile"
+    ),
+    plot_catalog_entry(
+      "running-time-box",
+      "Running Time Box Plot",
+      "Shows running-time distributions for the selected algorithms.",
+      1, NULL, TRUE, FALSE, "--running-time"
+    ),
+    plot_catalog_entry(
+      "running-time-by-core",
+      "Running Time by Core",
+      "Shows running-time distributions grouped by available core counts.",
+      1, NULL, TRUE, FALSE, "--running-time"
+    ),
+    plot_catalog_entry(
+      "relative-cut-graph-grid",
+      "Relative Cut Graph Grid",
+      "Shows relative cut per graph and core count against the first selected source.",
+      2, NULL, FALSE, TRUE, "--running-time"
+    ),
+    plot_catalog_entry(
+      "relative-time-graph-grid",
+      "Relative Running Time Graph Grid",
+      "Shows relative running time per graph and core count against the first selected source.",
+      2, NULL, FALSE, TRUE, "--running-time"
+    ),
+    plot_catalog_entry(
+      "speedup",
+      "Speedup",
+      "For one algorithm, uses the smallest available core count as baseline and plots geometric-mean speedup curves for larger core counts.",
+      1, 1, FALSE, FALSE, "--plot", "speedup"
+    )
+  )
+}
+
+print_plot_catalog_json <- function() {
+  cat(jsonlite::toJSON(list(plots = plot_catalog()), auto_unbox = TRUE, na = "null", digits = NA))
+  cat("\n")
+}
+
+print_plot_catalog_text <- function() {
+  cat("Supported plot types:\n")
+  for (plot in plot_catalog()) {
+    cat(sprintf("  %-28s %s\n", plot$id, plot$name))
+  }
+}
+
 source_mkexp_plot_library <- function() {
   source_mkexp_file("R/common.R")
   source_mkexp_file("R/performance_profile_plot.R")
@@ -109,11 +174,17 @@ run_mkexp_plot <- function(args = character(0)) {
   output_file <- "/output/plots.pdf"
   thread_filter <- NULL
   tex <- FALSE
+  list_catalog <- FALSE
+  json_output <- FALSE
 
   i <- 1L
   while (i <= length(args)) {
     arg <- args[[i]]
-    if (arg == "--performance-profile") {
+    if (arg == "--list") {
+      list_catalog <- TRUE
+    } else if (arg == "--json") {
+      json_output <- TRUE
+    } else if (arg == "--performance-profile") {
       do_performance_profile <- TRUE
       explicit_plots <- TRUE
     } else if (arg == "--speedup") {
@@ -148,14 +219,9 @@ run_mkexp_plot <- function(args = character(0)) {
       thread_filter <- parse_thread_filter(args[[i]])
     } else if (startsWith(arg, "--threads=")) {
       thread_filter <- parse_thread_filter(substring(arg, 11L))
-    } else if (arg == "--tex") {
-      tex <- TRUE
-    } else if (arg == "--no-tex") {
-      tex <- FALSE
-    } else if (startsWith(arg, "--tex=")) {
-      tex <- parse_bool(substring(arg, 7L), "--tex")
     } else if (arg %in% c("-h", "--help")) {
-      cat("Usage: mkexp.R plot [--plot <id>] [--output <path>] [--threads T|NxMxT] [--tex] <source1> [<source2> ...]\n")
+      cat("Usage: mkexp.R plot [--list] [--json]\n")
+      cat("       mkexp.R plot [--plot <id>] [--output <path>] [--threads T|NxMxT] <source1> [<source2> ...]\n")
       quit(status = 0)
     } else if (!startsWith(arg, "--")) {
       source_args <- c(source_args, arg)
@@ -163,6 +229,15 @@ run_mkexp_plot <- function(args = character(0)) {
       cli::cli_alert_warning("Unknown argument ignored: {arg}")
     }
     i <- i + 1L
+  }
+
+  if (list_catalog) {
+    if (json_output) {
+      print_plot_catalog_json()
+    } else {
+      print_plot_catalog_text()
+    }
+    return(invisible(NULL))
   }
 
   if (!explicit_plots) {
@@ -186,10 +261,6 @@ run_mkexp_plot <- function(args = character(0)) {
   if (!is.null(thread_filter)) {
     cli::cli_alert_info("Threads    : {.val {thread_filter$label}}")
   }
-  if (tex) {
-    cli::cli_alert_info("Labels     : TeX")
-  }
-
   source_mkexp_plot_library()
 
   label_timeout <- if (tex) TEX_LABEL_TIMEOUT else PDF_LABEL_TIMEOUT
