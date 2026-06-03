@@ -1,8 +1,10 @@
 .tikzdevicecache.db
 .r-libs/
 .r-libs-native/
-pdf/
+pdf/*
+!pdf/.keepdir
 tex/figures/*
+!tex/figures/cache/
 !tex/figures/cache/.keepdir
 .cache/
 .cache-native/

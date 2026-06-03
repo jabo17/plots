@@ -1,0 +1,23 @@
+\documentclass[a4paper]{scrartcl}
+
+\usepackage{lipsum}
+
+\input{preamble.tex}
+
+\usepackage{tikz}
+\usetikzlibrary{external}
+\tikzexternalize[prefix=figures/cache/]
+
+\begin{document}
+
+\begin{figure}[t]
+    \centering
+    \input{figures/examples.tex}
+    \input{figures/examples_legend.tex}
+    \caption{Some plots.}
+    \label{fig:some_plots}
+\end{figure}
+
+As can be seen in Figure~\ref{fig:some_plots}, \lipsum[1-2]
+
+\end{document}

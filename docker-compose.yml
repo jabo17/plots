@@ -14,6 +14,11 @@ services:
       - ./.r-libs:/usr/local/lib/R/site-library
     environment:
       - TZ=Europe/Berlin
+      - MKEXP2_PLOTS_DATA_DIR=/data
+      - MKEXP2_PLOTS_CACHE_DIR=/cache
+      - MKEXP2_PLOTS_TEX_DIR=/tikz
+      - MKEXP2_PLOTS_TEX_CLASS=scrartcl
+      - MKEXP2_PLOTS_TEX_INPUT=/tex/preamble.tex
     init: true
     stdin_open: true
     tty: true

@@ -14,8 +14,8 @@ env_or_default <- function(name, default) {
 DATA_INPUT_DIR <- env_or_default("MKEXP2_PLOTS_DATA_DIR", "/data")
 CACHE_DIR <- env_or_default("MKEXP2_PLOTS_CACHE_DIR", "/cache")
 
-TEX_CLASS <- "/doc/lipics-v2021"
-TEX_INPUT <- "/doc/definitions.tex"
+TEX_CLASS <- env_or_default("MKEXP2_PLOTS_TEX_CLASS", "/doc/lipics-v2021")
+TEX_INPUT <- env_or_default("MKEXP2_PLOTS_TEX_INPUT", "/doc/definitions.tex")
 
 TEX_OUTPUT <- env_or_default("MKEXP2_PLOTS_TEX_DIR", "/plots")
 DATA_OUTPUT <- env_or_default("MKEXP2_PLOTS_DATA_OUTPUT_DIR", DATA_INPUT_DIR)

@@ -142,12 +142,12 @@ if (!is.null(thread_filter)) {
 # ── Source plot library ────────────────────────────────────────────────────────
 # Working directory inside Docker is /work (the plots submodule).
 
-source("common.R")
-source("performance_profile_plot.R")
-source("speedup_plot.R")
-source("running_time_box_plot.R")
-source("running_time_by_core_box_plot.R")
-source("relative_by_graph_grid_plot.R")
+source("R/common.R")
+source("R/performance_profile_plot.R")
+source("R/speedup_plot.R")
+source("R/running_time_box_plot.R")
+source("R/running_time_by_core_box_plot.R")
+source("R/relative_by_graph_grid_plot.R")
 
 # Use plain-text labels rather than LaTeX commands for PDF output.
 TEX_LABEL_TIMEOUT    <- "T"
