@@ -77,6 +77,23 @@ default_aggregator <- function(df) {
     )
 }
 
+default_hypergraph_aggregator <- function(df) {
+    df %>% default_aggregator %>% dplyr::mutate(
+        MinRealKM1 = ifelse(all(is.na(df$RealKM1)), NA, min(df$RealKM1, na.rm = TRUE)),
+        AvgRealKM1 = ifelse(all(is.na(df$RealKM1)), NA, mean(df$RealKM1, na.rm = TRUE)),
+        MaxRealKM1 = ifelse(all(is.na(df$RealKM1)), NA, max(df$RealKM1, na.rm = TRUE)),
+        MinKM1 = ifelse(all(is.na(df$KM1)), NA, min(df$KM1, na.rm = TRUE)),
+        AvgKM1 = ifelse(all(is.na(df$KM1)), NA, mean(df$KM1, na.rm = TRUE)),
+        MaxKM1 = ifelse(all(is.na(df$KM1)), NA, max(df$KM1, na.rm = TRUE)),
+        MinRealObjVal = ifelse(all(is.na(df$RealObjVal)), NA, min(df$RealObjVal, na.rm = TRUE)),
+        AvgRealObjVal = ifelse(all(is.na(df$RealObjVal)), NA, mean(df$RealObjVal, na.rm = TRUE)),
+        MaxRealObjVal = ifelse(all(is.na(df$RealObjVal)), NA, max(df$RealObjVal, na.rm = TRUE)),
+        MinObjVal = ifelse(all(is.na(df$ObjVal)), NA, min(df$ObjVal, na.rm = TRUE)),
+        AvgObjVal = ifelse(all(is.na(df$ObjVal)), NA, mean(df$ObjVal, na.rm = TRUE)),
+        MaxObjVal = ifelse(all(is.na(df$ObjVal)), NA, max(df$ObjVal, na.rm = TRUE)),
+    )
+}
+
 mem_normalizer <- \(df, aggregator = mem_aggregator, timelimit = DEFAULT_TIMELIMIT) {
     if (!("MaxRSS" %in% colnames(df))) {
         df$MaxRSS <- -1
@@ -126,10 +143,20 @@ hierarchy_level_aggregator <- function(df) {
 
 DEFAULT_BY <- c("Algorithm", "Graph", "K", "Epsilon", "Cores")
 
+DEFAULT_HYPERGRAPH_BY <- c("Algorithm", "Hypergraph", "K", "Epsilon", "Cores")
+
 dist_aggregator <- \(df) {
     df %>% default_aggregator %>% dplyr::mutate(
         AvgN = mean(df$N, na.rm = TRUE),
         AvgM = mean(df$M, na.rm = TRUE)
+    )
+}
+
+dist_hypergraph_aggregator <- \(df) {
+    df %>% default_hypergraph_aggregator %>% dplyr::mutate(
+        AvgN = mean(df$N, na.rm = TRUE),
+        AvgM = mean(df$M, na.rm = TRUE),
+        AvgPins = mean(df$Pins, na.rm = TRUE)
     )
 }
 
@@ -177,6 +204,40 @@ default_normalizer <- \(
         dplyr::mutate(AvgRealCut = ifelse(is.na(AvgRealCut), Inf, AvgRealCut)) %>%
         dplyr::mutate(Infeasible = !Failed & !Timeout & (AvgCut == Inf)) %>%
         dplyr::mutate(Imbalanced = !Failed & !Timeout & (AvgCut == Inf)) %>%
+        dplyr::mutate(Feasible = !Failed & !Timeout & !Infeasible)
+}
+
+default_hypergraph_normalizer <- \(
+    df, 
+    aggregator = default_hypergraph_aggregator, 
+    timelimit = DEFAULT_TIMELIMIT, 
+    by = DEFAULT_HYPERGRAPH_BY,
+    aggregate.pre = identity,
+    aggregate.post = identity
+) {
+    df %>%
+        dplyr::mutate(Hypergraph = sub("\\.zoltan.hg|\\.metis|\\.bgf|\\.mtx|\\.mtx.hgr|\\.hgr|\\.graph|\\.scotch", "", Hypergraph)) %>%
+        dplyr::mutate(Failed = ifelse(Failed == "1", TRUE, FALSE)) %>%
+        dplyr::mutate(Timeout = ifelse(Timeout == "1", TRUE, FALSE)) %>%
+        dplyr::mutate(Imbalance = ifelse(Failed | Timeout, NA, Imbalance)) %>%
+        dplyr::mutate(Time = ifelse(Timeout, timelimit, ifelse(Failed, NA, Time))) %>%
+        dplyr::mutate(RealCut = ifelse(Failed | Timeout, NA, Cut)) %>%
+        dplyr::mutate(Cut = ifelse(Failed | Timeout | (Imbalance > Epsilon + .Machine$double.eps), NA, Cut)) %>%
+        dplyr::mutate(RealKM1 = ifelse(Failed | Timeout, NA, Cut)) %>%
+        dplyr::mutate(KM1 = ifelse(Failed | Timeout | (Imbalance > Epsilon + .Machine$double.eps), NA, KM1)) %>%
+        # set ObjVal to cut or km1 depending on the objective function df$Objective
+        dplyr::mutate(ObjVal = ifelse(Objective == "cut", Cut, ifelse(Objective == "km1", KM1, NA))) %>%
+        aggregate.pre() %>%
+        plyr::ddply(by, aggregator) %>%
+        aggregate.post() %>%
+        dplyr::mutate(AvgCut = ifelse(is.na(AvgCut), Inf, AvgCut)) %>%
+        dplyr::mutate(AvgRealCut = ifelse(is.na(AvgRealCut), Inf, AvgRealCut)) %>%
+        dplyr::mutate(AvgKM1 = ifelse(is.na(AvgKM1), Inf, AvgKM1)) %>%
+        dplyr::mutate(AvgRealKM1 = ifelse(is.na(AvgRealKM1), Inf, AvgRealKM1)) %>%
+        dplyr::mutate(AvgObjVal = ifelse(is.na(AvgObjVal), Inf, AvgObjVal)) %>%
+        dplyr::mutate(AvgRealObjVal = ifelse(is.na(AvgRealObjVal), Inf, AvgRealObjVal)) %>%
+        dplyr::mutate(Infeasible = !Failed & !Timeout & (AvgObjVal == Inf)) %>%
+        dplyr::mutate(Imbalanced = !Failed & !Timeout & (AvgObjVal == Inf)) %>%
         dplyr::mutate(Feasible = !Failed & !Timeout & !Infeasible)
 }
 
@@ -243,6 +304,83 @@ load_dataset <- \(
     df$Algorithm <- name
     df$AvgCut <- ifelse(df$AvgCut == 0, 1, df$AvgCut)
     df$AvgRealCut <- ifelse(df$AvgRealCut == 0, 1, df$AvgRealCut)
+
+    simple <- name
+    simple <- stringr::str_replace(simple, "\\\\l", "")
+    simple <- stringr::str_replace_all(simple, "\\{[:digit:]*\\}", "")
+    simple <- stringr::str_replace_all(simple, "\\{|\\}", "")
+    df$SimpleName <- simple
+
+    return(df)
+}
+
+load_hypergraph_dataset <- \(
+    filename, name,
+    normalizer = default_hypergraph_normalizer,
+    aggregator = default_hypergraph_aggregator,
+    default_epsilon = DEFAULT_EPSILON,
+    default_timelimit = DEFAULT_TIMELIMIT,
+    db = data.frame(),
+    eps_offset = 0,
+    cache = TRUE) {
+    real_filename <- paste0(DATA_INPUT_DIR, "/", filename, ".csv")
+    cache_filename <- paste0(CACHE_DIR, "/", gsub("/", "_", filename), ".cached.csv")
+    df <- data.frame()
+
+    if (cache && file.exists(cache_filename)) {
+        df <- read.csv(cache_filename)
+    } else {
+        if (!file.exists(real_filename)) {
+            cli::cli_alert_danger("CSV file {.path {real_filename}} does not exist")
+            quit(status = -1)
+        }
+
+        df <- read.csv(real_filename)
+
+        if (!("Cores" %in% colnames(df))) {
+            if ("NumNodes" %in% colnames(df) && 
+                "NumMPIsPerNode" %in% colnames(df) && 
+                "NumThreadsPerMPI" %in% colnames(df)) {
+                df$Cores <- df$NumNodes * df$NumMPIsPerNode * df$NumThreadsPerMPI
+            } else if ("Threads" %in% colnames(df)) {
+                df$Cores <- df$Threads
+            } else {
+                df$Cores <- 1
+            }
+        }
+        if (!("Failed" %in% colnames(df))) {
+            df$Failed <- FALSE
+        }
+        if (!("Timeout" %in% colnames(df))) {
+            df$Timeout <- FALSE
+        }
+        if (!("Epsilon" %in% colnames(df))) {
+            df$Epsilon <- default_epsilon
+        }
+        df$Epsilon <- df$Epsilon - eps_offset
+
+        df$Algorithm <- name
+        df <- normalizer(df, aggregator = aggregator, timelimit = default_timelimit)
+
+        if (cache) {
+            cli::cli_alert_info("Caching dataset to {.path {cache_filename}}")
+            dir.create(dirname(cache_filename), recursive = TRUE, showWarnings = FALSE)
+            write.csv(df, cache_filename, row.names = FALSE)
+        }
+    }
+
+    if (nrow(db) > 0) {
+        db <- db %>% dplyr::mutate(Hypergraph = sub("\\.zoltan.hg|\\.metis|\\.bgf|\\.mtx|\\.mtx.hgr|\\.hgr|\\.graph|\\.scotch", "", Hypergraph)) 
+        df <- df %>% dplyr::left_join(db, by = "Hypergraph")
+    }
+
+    df$Algorithm <- name
+    df$AvgCut <- ifelse(df$AvgCut == 0, 1, df$AvgCut)
+    df$AvgKM1 <- ifelse(df$AvgKM1 == 0, 1, df$AvgKM1)
+    df$AvgObjVal <- ifelse(df$AvgObjVal == 0, 1, df$AvgObjVal)
+    df$AvgRealCut <- ifelse(df$AvgRealCut == 0, 1, df$AvgRealCut)
+    df$AvgRealKM1 <- ifelse(df$AvgRealKM1 == 0, 1, df$AvgRealKM1)
+    df$AvgRealObjVal <- ifelse(df$AvgRealObjVal == 0, 1, df$AvgRealObjVal)
 
     simple <- name
     simple <- stringr::str_replace(simple, "\\\\l", "")
