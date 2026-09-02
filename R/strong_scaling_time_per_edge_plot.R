@@ -5,7 +5,7 @@ create_strong_scaling_time_per_edge_plot <- \(
     colors = c(),
     levels = c(),
     plot.title = NA,
-    plot.xlab = "Compute Nodes ($P$)",
+    plot.xlab = latex_labels("Compute Nodes ($P$)"),
     plot.ylab = "Time per Edge [ns]",
     y_labels = "dense",
     max_nodes = 64,
@@ -34,9 +34,9 @@ create_strong_scaling_time_per_edge_plot <- \(
     }
 
     y.breaks = seq(-3, 16, by = 1)
-    y.labels = paste0("$2^{", y.breaks, "}$")
+    y.labels = math_labels(paste0("2^{", y.breaks, "}"))
     if (y_labels == "thin") {
-        y.labels <- ifelse(seq_along(y.breaks) %% 2 == 0, "", paste0("$2^{", y.breaks, "}$"))
+        y.labels <- ifelse(seq_along(y.breaks) %% 2 == 0, "", math_labels(paste0("2^{", y.breaks, "}")))
     }
 
     p <- ggplot2::ggplot(
@@ -125,13 +125,13 @@ create_multinode_time_per_edge_plot <- \(
     }
 
     y.breaks = seq(-16, 16, by = 1)
-    y.labels = paste0("$2^{", y.breaks, "}$")
+    y.labels = math_labels(paste0("2^{", y.breaks, "}"))
     if (y_labels == "thin") {
-        y.labels <- ifelse(seq_along(y.breaks) %% 2 == 0, "", paste0("$2^{", y.breaks, "}$"))
+        y.labels <- ifelse(seq_along(y.breaks) %% 2 == 0, "", math_labels(paste0("2^{", y.breaks, "}")))
     }
 
     x.breaks = seq(32, 40, by = 1)
-    x.labels = paste0("$2^{", x.breaks, "}$")
+    x.labels = math_labels(paste0("2^{", x.breaks, "}"))
 
     p <- ggplot2::ggplot(
         data, 
@@ -175,4 +175,3 @@ create_multinode_time_per_edge_plot <- \(
 
     return(p)
 }
-

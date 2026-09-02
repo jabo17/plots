@@ -4,7 +4,7 @@ create_largek_throughput_plot <- \(
     ..., 
     colors = c(),
     levels = c(),
-    plot.xlab = "Compute Nodes ($P$)",
+    plot.xlab = latex_labels("Compute Nodes ($P$)"),
     plot.ylab = "Throughput [Edges / s]",
     plot.title = NA
 ) {
@@ -33,7 +33,7 @@ create_largek_throughput_plot <- \(
         )
 
     y.breaks = seq(20, 35, by = 2)
-    y.labels = paste0("$2^{", y.breaks, "}$")
+    y.labels = math_labels(paste0("2^{", y.breaks, "}"))
 
     p <- ggplot2::ggplot(
         data, 
@@ -77,4 +77,3 @@ create_largek_throughput_plot <- \(
 
     return(p)
 }
-

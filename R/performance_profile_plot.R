@@ -255,7 +255,7 @@ create_performance_profile_plot <- \(
         span <- max_value - min_value
 
         x_breaks <- c(x_breaks, sapply(segment$breaks, \(v) offset + segment$width * (do.call(segment$trans, list(v)) - min_value) / span))
-        x_labels <- c(x_labels, paste0("$", segment$labels, "$"))
+        x_labels <- c(x_labels, math_labels(segment$labels))
 
         offset <- offset + segment$width
         from <- segment$to

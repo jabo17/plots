@@ -3,11 +3,11 @@ show_timeout <- \(df, option) option == "always" || (option == "auto" && any(df$
 show_imbalanced <- \(df, option) option == "always" || (option == "auto" && any(df$Imbalanced))
 show_failed <- \(df, option) option == "always" || (option == "auto" && any(df$Failed))
 
-create_running_time_box_plot <- \(
+create_box_plot <- \(
     ...,
-    column.time = "AvgTime",
+    column.value = "AvgTime",
     column.algorithm = "Algorithm",
-    column.timeout = "Timeout",
+    out = "Timeout",
     column.imbalanced = "Imbalanced",
     column.failed = "Failed",
     primary_key = c("Graph", "K"),
@@ -31,7 +31,7 @@ create_running_time_box_plot <- \(
     all_dfs <- list(...)
 
     if (length(all_dfs) < 1) {
-        cli::cli_abort("Need at least one data frames for plotting a running time box plot.")
+        cli::cli_abort("Need at least one data frames for plotting a box plot.")
     }
 
     # Run some basic sanity checks against the data frames
@@ -50,11 +50,11 @@ create_running_time_box_plot <- \(
             cli::cli_abort("Rows for multiple algorithms in the same data frame no. {.val {i}}: {.val {unique(algorithms)}}")
         }
 
-        if (!(column.time %in% colnames(df))) {
-            cli::cli_abort("Column {.field {column.time}} missing from data frame no. {.val {i}} (algorithm {.val {algorithm}}).")
+        if (!(column.value %in% colnames(df))) {
+            cli::cli_abort("Column {.field {column.value}} missing from data frame no. {.val {i}} (algorithm {.val {algorithm}}).")
         }
-        if (!(column.timeout %in% colnames(df))) {
-            cli::cli_abort("Column {.field {column.timeout}} missing from data frame no. {.val {i}} (algorithm {.val {algorithm}}).")
+        if (!(out %in% colnames(df))) {
+            cli::cli_abort("Column {.field {out}} missing from data frame no. {.val {i}} (algorithm {.val {algorithm}}).")
         }
         if (!(column.imbalanced %in% colnames(df))) {
             cli::cli_abort("Column {.field {column.imbalanced}} missing from data frame no. {.val {i}} (algorithm {.val {algorithm}}).")
@@ -63,11 +63,11 @@ create_running_time_box_plot <- \(
             cli::cli_abort("Column {.field {column.failed}} missing from data frame no. {.val {i}} (algorithm {.val {algorithm}}).")
         }
 
-        if (0 %in% df[[column.time]]) {
-            cli::cli_abort("Column {.field {column.time}} of data frame no. {.val {i}} (algorithm {.val {algorithm}}) contains {.val 0} values.")
+        if (0 %in% df[[column.value]]) {
+            cli::cli_abort("Column {.field {column.value}} of data frame no. {.val {i}} (algorithm {.val {algorithm}}) contains {.val 0} values.")
         }
-        if (-Inf %in% df[[column.time]]) {
-            cli::cli_abort("Column {.field {column.time}} of data frame no. {.val {i}} (algorithm {.val {algorithm}}) contains {.val -Inf} values.")
+        if (-Inf %in% df[[column.value]]) {
+            cli::cli_abort("Column {.field {column.value}} of data frame no. {.val {i}} (algorithm {.val {algorithm}}) contains {.val -Inf} values.")
         }
 
         if (nrow(df[, primary_key]) != nrow(all_dfs[[1]][, primary_key])) {
@@ -81,16 +81,16 @@ create_running_time_box_plot <- \(
     data <- purrr::map_dfr(all_dfs, \(df) df %>%
         dplyr::select(
             Algorithm = rlang::sym(column.algorithm),
-            Time = rlang::sym(column.time),
-            Timeout = rlang::sym(column.timeout),
+            Value = rlang::sym(column.value),
+            Timeout = rlang::sym(out),
             Imbalanced = rlang::sym(column.imbalanced),
             Failed = rlang::sym(column.failed)
         ) %>%
         dplyr::mutate(
             PK = dplyr::row_number(),
             Imbalanced = Imbalanced & exclude.imbalanced,
-            JitterTime = Time,
-            AnnotationTime = Time
+            JitterValue = Value,
+            AnnotationValue = Value
         )
     )
 
@@ -99,16 +99,16 @@ create_running_time_box_plot <- \(
     }
 
     # Find max time
-    min_max_time <- data %>%
+    min_max_value <- data %>%
         dplyr::filter(!Timeout & !Imbalanced & !Failed) %>%
-        dplyr::summarize(Max = max(Time), Min = min(Time))
-    max_time_log10 <- ceiling(log10(min_max_time$Max))
-    min_time_log10 <- ceiling(log10(min_max_time$Min))
-    max_time_exp10 <- 10 ^ max_time_log10
-    min_time_exp10 <- 10 ^ min_time_log10
+        dplyr::summarize(Max = max(Value), Min = min(Value))
+    max_value_log10 <- ceiling(log10(min_max_value$Max))
+    min_value_log10 <- ceiling(log10(min_max_value$Min))
+    max_value_exp10 <- 10 ^ max_value_log10
+    min_value_exp10 <- 10 ^ min_value_log10
 
     # Create ticks
-    y_breaks <- 10 ^ seq(min_time_log10, max_time_log10, by = 1)
+    y_breaks <- 10 ^ seq(min_value_log10, max_value_log10, by = 1)
     y_labels <- math_labels(sapply(y_breaks, \(val) paste0("10^{", log10(val), "}")))
 
     show_imbalanced_tick <- show_imbalanced(data, tick.imbalanced)
@@ -125,52 +125,52 @@ create_running_time_box_plot <- \(
 
     # Mark imbalanced cuts as imbalanced
     data <- data %>% dplyr::mutate(
-        JitterTime = ifelse(exclude.imbalanced & Imbalanced & !Timeout, 10 ^ (max_time_log10 + offset), JitterTime),
-        Time = ifelse(exclude.imbalanced & Imbalanced & !Timeout, NA, Time)
+        JitterValue = ifelse(exclude.imbalanced & Imbalanced & !Timeout, 10 ^ (max_value_log10 + offset), JitterValue),
+        Value = ifelse(exclude.imbalanced & Imbalanced & !Timeout, NA, Value)
     )
 
     if (show_timeout_tick) {
         offset <- offset + tick.errors.space_between
-        y_breaks <- c(y_breaks, 10 ^ (max_time_log10 + offset))
+        y_breaks <- c(y_breaks, 10 ^ (max_value_log10 + offset))
         y_labels <- c(y_labels, label.timeout)
     }
 
     # Mark timeout cuts as timeouts
     data <- data %>% dplyr::mutate(
-        JitterTime = ifelse(Timeout, 10 ^ (max_time_log10 + offset), JitterTime)
+        JitterValue = ifelse(Timeout, 10 ^ (max_value_log10 + offset), JitterValue)
     )
 
     if (show_failed_tick) {
         offset <- offset + tick.errors.space_between
-        y_breaks <- c(y_breaks, 10 ^ (max_time_log10 + offset))
+        y_breaks <- c(y_breaks, 10 ^ (max_value_log10 + offset))
         y_labels <- c(y_labels, label.failed)
     }
 
     # Mark failed cuts as failed
     data <- data %>% dplyr::mutate(
-        JitterTime = ifelse(Failed & !Timeout & !Imbalanced, 10 ^ (max_time_log10 + offset), JitterTime),
-        Time = ifelse(Failed & !Timeout & !Imbalanced, NA, Time)
+        JitterValue = ifelse(Failed & !Timeout & !Imbalanced, 10 ^ (max_value_log10 + offset), JitterValue),
+        Value = ifelse(Failed & !Timeout & !Imbalanced, NA, Value)
     )
 
     data <- data %>%
         dplyr::group_by(PK) %>%
-        dplyr::mutate(.AllOk = all(!is.na(Time))) %>%
+        dplyr::mutate(.AllOk = all(!is.na(Value))) %>%
         dplyr::ungroup() %>%
-        dplyr::mutate(ComparableTime = ifelse(.AllOk, Time, NA)) %>%
+        dplyr::mutate(ComparableValue = ifelse(.AllOk, Value, NA)) %>%
         dplyr::select(-.AllOk)
 
     annotation <- data %>%
         dplyr::group_by(Algorithm) %>%
         dplyr::summarize(
             Num = dplyr::n(),
-            NumFeasibles = sum(!is.na(Time)),
-            NumCommon = sum(!is.na(ComparableTime)),
-            GmeanFeasibles = exp(mean(log(Time), na.rm = TRUE)),
-            GmeanCommon = exp(mean(log(ComparableTime), na.rm = TRUE)), 
+            NumFeasibles = sum(!is.na(Value)),
+            NumCommon = sum(!is.na(ComparableValue)),
+            GmeanFeasibles = exp(mean(log(Value), na.rm = TRUE)),
+            GmeanCommon = exp(mean(log(ComparableValue), na.rm = TRUE)), 
             .groups = "drop"
         )
 
-    p <- ggplot2::ggplot(data, ggplot2::aes(x = Algorithm, y = JitterTime)) +
+    p <- ggplot2::ggplot(data, ggplot2::aes(x = Algorithm, y = JitterValue)) +
         ggplot2::geom_jitter(
             ggplot2::aes(color = Algorithm, fill = Algorithm),
             size = 0.75,
@@ -179,12 +179,12 @@ create_running_time_box_plot <- \(
             width = 0.3
         ) +
         ggplot2::stat_boxplot(
-            ggplot2::aes(y = ComparableTime, color = Algorithm), 
+            ggplot2::aes(y = ComparableValue, color = Algorithm), 
             geom = "errorbar", width = 0.6,
             na.rm = TRUE
         ) +
         ggplot2::geom_boxplot(
-            ggplot2::aes(y = ComparableTime, color = Algorithm), 
+            ggplot2::aes(y = ComparableValue, color = Algorithm), 
             outlier.shape = NA, 
             alpha = 0.5,
             na.rm = TRUE
@@ -200,7 +200,7 @@ create_running_time_box_plot <- \(
         p <- p + ggplot2::geom_text(
             ggplot2::aes(
                 x = Algorithm, 
-                y = min(data$JitterTime) / 2,
+                y = min(data$JitterValue) / 2,
                 label = sprintf(
                     "Cmp: %.1f s (%d), All: %.1f s (%d)",
                     GmeanCommon, 
@@ -217,8 +217,8 @@ create_running_time_box_plot <- \(
         p <- p + ggplot2::geom_text(
             ggplot2::aes(
                 x = Algorithm, 
-                y = min(data$JitterTime) / annotate.position,
-                label = sprintf("%.1f s", GmeanCommon),
+                y = min(data$JitterValue) / annotate.position,
+                label = sprintf("%.1f", GmeanCommon),
                 vjust = 0.5
             ), 
             annotation, 
@@ -227,7 +227,7 @@ create_running_time_box_plot <- \(
     }
 
     if (show_error_ticks) {
-        p <- p + ggplot2::geom_hline(yintercept = 10 ^ (max_time_log10 + tick.errors.space_below / 2))
+        p <- p + ggplot2::geom_hline(yintercept = 10 ^ (max_value_log10 + tick.errors.space_below / 2))
     }
 
     # Set colors

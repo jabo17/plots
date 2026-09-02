@@ -6,27 +6,46 @@ create_per_k_relcut_plot <- \(
     partial = TRUE,
     colors = c(),
     levels = c(),
-    ks = c()
+    ks = c(),
+    column.graph = "Graph"
 ) {
     if (length(ks) == 0) {
         ks <- unique(baseline$K)
     }
 
-    baseline <- baseline %>% dplyr::arrange(Graph, K)
+    baseline <- baseline %>% dplyr::arrange(.data[[column.graph]], K)
     all_data <- list(...)
+    excluded_rows <- list()
     for (i in 1:length(all_data)) {
         all_data[[i]] <- all_data[[i]] %>%
-            dplyr::arrange(Graph, K) %>%
+            dplyr::arrange(.data[[column.graph]], K) %>%
             dplyr::mutate(CutRatio = AvgRealCut / baseline$AvgRealCut) %>%
             dplyr::mutate(CutRatio = ifelse(CutRatio == Inf, NA, CutRatio))
 
         if (!partial) {
-            good_graphs <- (all_data[[i]] %>% dplyr::group_by(Graph) %>% dplyr::filter(all(!Failed)))$Graph
-            all_data[[i]] <- all_data[[i]] %>% dplyr::filter(Graph %in% good_graphs)
+            excluded_rows[[i]] <- all_data[[i]] %>%
+                dplyr::filter(Failed) %>%
+                dplyr::mutate(.exclusion_reason = "failed")
+            good_graphs <- all_data[[i]] %>%
+                dplyr::group_by(.data[[column.graph]]) %>%
+                dplyr::filter(all(!Failed)) %>%
+                dplyr::pull(column.graph)
+            all_data[[i]] <- all_data[[i]] %>%
+                dplyr::filter(.data[[column.graph]] %in% good_graphs)
         }
     }
 
-    data <- do.call(rbind, all_data)
+    if (!partial) {
+        log_plot_exclusions(
+            dplyr::bind_rows(excluded_rows),
+            "per-k relative cut plot",
+            c(column.graph, "K")
+        )
+    }
+
+    data <- all_data %>%
+        lapply(dplyr::select, Algorithm, K, CutRatio) %>%
+        dplyr::bind_rows()
     data <- data %>%
         dplyr::group_by(Algorithm, K) %>%
         dplyr::summarise(AvgCutRatio = Gmean(CutRatio, zero.propagate = TRUE, na.rm = TRUE), .groups = "drop")
@@ -41,7 +60,7 @@ create_per_k_relcut_plot <- \(
         ggplot2::scale_x_continuous(
             trans = "log2",
             breaks = c(2^2, 2**4, 2**6, 2**11, 2**14, 2**17, 2**20),
-            labels = c("$2^2$", "$2^4$", "$2^6$", "$2^{11}$", "$2^{14}$", "$2^{17}$", "$2^{20}$")
+            labels = math_labels(c("2^2", "2^4", "2^6", "2^{11}", "2^{14}", "2^{17}", "2^{20}"))
         )
 
     if (length(colors) > 0) {

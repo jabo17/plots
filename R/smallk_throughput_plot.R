@@ -6,7 +6,7 @@ create_smallk_throughput_plot <- \(
     levels = c(),
     plot.title = NA,
     debug = FALSE,
-    plot.xlab = "Compute Nodes ($P$)",
+    plot.xlab = latex_labels("Compute Nodes ($P$)"),
     plot.ylab = "Throughput [Edges / s]"
 ) {
     all_dfs <- list(...)
@@ -38,7 +38,7 @@ create_smallk_throughput_plot <- \(
     }
 
     y.breaks = seq(25, 35, by = 2)
-    y.labels = paste0("$2^{", y.breaks, "}$")
+    y.labels = math_labels(paste0("2^{", y.breaks, "}"))
 
     p <- ggplot2::ggplot(
         data, 
@@ -89,7 +89,7 @@ create_smallk_multigraph_throughput_plot <- \(
     levels = c(),
     plot.title = NA,
     debug = FALSE,
-    plot.xlab = "Compute Nodes ($P$)",
+    plot.xlab = latex_labels("Compute Nodes ($P$)"),
     plot.ylab = "Throughput [Edges / s]",
     mark_feasibility = TRUE
 ) {
@@ -123,7 +123,7 @@ create_smallk_multigraph_throughput_plot <- \(
     }
 
     y.breaks = seq(25, 35, by = 2)
-    y.labels = paste0("$2^{", y.breaks, "}$")
+    y.labels = math_labels(paste0("2^{", y.breaks, "}"))
 
     p <- ggplot2::ggplot(
         data, 
@@ -170,5 +170,3 @@ create_smallk_multigraph_throughput_plot <- \(
 
     return(p)
 }
-
-

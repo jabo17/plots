@@ -429,6 +429,45 @@ if (!exists("tikz_device_loaded")) {
 current_device_file <- ""
 current_device_file_is_tikz <- FALSE
 
+# Wrap math labels only when they will be rendered by LaTeX. Native graphics
+# devices otherwise print the dollar delimiters as ordinary characters.
+math_labels <- function(labels) {
+    if (isTRUE(get0("TEX", ifnotfound = FALSE))) {
+        paste0("$", labels, "$")
+    } else {
+        gsub("[{}]", "", as.character(labels))
+    }
+}
+
+latex_labels <- function(labels) {
+    if (isTRUE(get0("TEX", ifnotfound = FALSE))) labels else gsub("$", "", labels, fixed = TRUE)
+}
+
+log_plot_exclusions <- function(data, plot, primary_key, reason = ".exclusion_reason") {
+    if (nrow(data) == 0) {
+        return(invisible(NULL))
+    }
+
+    key_labels <- apply(data[, primary_key, drop = FALSE], 1, function(row) {
+        paste(paste0(primary_key, "=", row), collapse = ", ")
+    })
+    algorithms <- if ("Algorithm" %in% colnames(data)) as.character(data$Algorithm) else "unknown algorithm"
+    reasons <- as.character(data[[reason]])
+    groups <- split(key_labels, interaction(algorithms, reasons, drop = TRUE, lex.order = TRUE))
+    group_rows <- unique(data.frame(Algorithm = algorithms, Reason = reasons, stringsAsFactors = FALSE))
+
+    cli::cli_alert_info("{plot}: excluded {nrow(data)} run{?s} from the plotted comparison set")
+    for (i in seq_len(nrow(group_rows))) {
+        algorithm <- group_rows$Algorithm[[i]]
+        exclusion_reason <- group_rows$Reason[[i]]
+        group_name <- interaction(algorithm, exclusion_reason, drop = TRUE, lex.order = TRUE)
+        instances <- paste(unique(groups[[as.character(group_name)]]), collapse = "; ")
+        cli::cli_bullets(c("*" = "{algorithm} ({exclusion_reason}): {instances}"))
+    }
+
+    invisible(NULL)
+}
+
 open_pdf <- function(file, width = 7) {
     current_device_file <<- paste0(PDF_OUTPUT, "/", file, ".pdf")
     current_device_file_is_tikz <<- FALSE

@@ -54,10 +54,10 @@ create_running_time_breakdown_plot <- function(
             values_to = "Value"
         )
 
-    ggplot2::ggplot(data, ggplot2::aes(x = Graph, y = Value, fill = Metric)) +
+    ggplot2::ggplot(data, ggplot2::aes(x = .data[[column.graph]], y = Value, fill = Metric)) +
         ggplot2::geom_col(width = 0.9, position = "stack") +
         ggplot2::labs(
-            x = "Graph",
+            x = column.graph,
             y = ifelse(normalize, "Time Fraction", "Time [s]"),
             fill = NULL
         ) +
